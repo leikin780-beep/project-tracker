@@ -1,0 +1,48 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Arrange project files
+        run: |
+          set -e
+          B="$RUNNER_TEMP/b"; M="$B/src/main"
+          mkdir -p "$M/java/com/projects/tracker" "$M/assets" "$M/res/drawable" "$M/res/mipmap-anydpi-v26" "$M/res/values" "$M/res/xml"
+          put() {
+            p=$(find . -path ./.git -prune -o -type f -name "$1" -print | head -1)
+            if [ -z "$p" ]; then echo "::error::Missing file: $1"; exit 1; fi
+            cp "$p" "$2"
+          }
+          put tracker-settings.gradle "$B/settings.gradle"
+          put tracker-build.gradle    "$B/build.gradle"
+          put tracker.properties      "$B/gradle.properties"
+          put TrackerManifest.xml     "$M/AndroidManifest.xml"
+          put tracker-app.html        "$M/assets/index.html"
+          for j in MainActivity CheckWorker Summary Mailer Store; do put "$j.java" "$M/java/com/projects/tracker/$j.java"; done
+          put file_paths.xml              "$M/res/xml/file_paths.xml"
+          put colors.xml                  "$M/res/values/colors.xml"
+          put ic_launcher.xml             "$M/res/mipmap-anydpi-v26/ic_launcher.xml"
+          put ic_launcher_foreground.xml  "$M/res/drawable/ic_launcher_foreground.xml"
+          put ic_notify.xml               "$M/res/drawable/ic_notify.xml"
+          find "$B" -type f | sort
+      - name: Build
+        run: |
+          cd "$RUNNER_TEMP/b"
+          gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-tracker-apk
+          path: ${{ runner.temp }}/b/build/outputs/apk/debug/app-debug.apk

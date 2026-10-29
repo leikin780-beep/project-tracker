@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a1230">
+<title>מעקב פרויקטים</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#edf1f7; --surface:#ffffff; --surface-2:#f3f6fb; --ink:#0e1630; --ink-2:#5a6785; --line:#dce3ee;
+  --hero1:#0a1230; --hero2:#1b2d6e; --hero-ink:#e9efff; --hero-dim:#9fb0d9;
+  --accent:#2f6bff; --accent-2:#13c2e3; --glow:rgba(19,194,227,.5);
+  --ok:#0f9f6e; --ok-bg:#e1f6ee; --part:#d98200; --part-bg:#fff1dc; --site:#2f6bff; --site-bg:#e4ecff;
+  --office:#7c4dff; --office-bg:#efe8ff; --bad:#e5484d; --bad-bg:#fde8e8; --na:#94a3b8; --na-bg:#e8edf4;
+  --shadow:0 1px 2px rgba(14,22,48,.06),0 8px 24px rgba(14,22,48,.06);
+  --font:"Heebo","Segoe UI",Arial,sans-serif; --num:"Orbitron","Heebo","Segoe UI",sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#060a17; --surface:#0d1428; --surface-2:#131c35; --ink:#e6ecf8; --ink-2:#8c9ab8; --line:#1e2945;
+    --hero1:#050918; --hero2:#121f52;
+    --ok:#2bd497; --ok-bg:#0b2a22; --part:#ffb340; --part-bg:#2e2210; --site:#6e9bff; --site-bg:#121f45;
+    --office:#a98bff; --office-bg:#211a40; --bad:#ff6b70; --bad-bg:#341418; --na:#6b7894; --na-bg:#18213a;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#060a17; --surface:#0d1428; --surface-2:#131c35; --ink:#e6ecf8; --ink-2:#8c9ab8; --line:#1e2945;
+  --hero1:#050918; --hero2:#121f52;
+  --ok:#2bd497; --ok-bg:#0b2a22; --part:#ffb340; --part-bg:#2e2210; --site:#6e9bff; --site-bg:#121f45;
+  --office:#a98bff; --office-bg:#211a40; --bad:#ff6b70; --bad-bg:#341418; --na:#6b7894; --na-bg:#18213a;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--hero1)}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding:0 14px calc(150px + env(safe-area-inset-bottom,0px))}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums}
+
+/* hero */
+.hero{position:relative;overflow:hidden;color:var(--hero-ink);margin:0 -14px;padding:20px 18px 18px;border-radius:0 0 28px 28px;
+  background:radial-gradient(90% 70% at 0% 0%,rgba(19,194,227,.28),transparent 60%),radial-gradient(70% 60% at 100% 100%,rgba(47,107,255,.35),transparent 60%),linear-gradient(160deg,var(--hero1),var(--hero2))}
+.hero::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:22px 22px;
+  -webkit-mask-image:linear-gradient(180deg,#000,transparent 85%);mask-image:linear-gradient(180deg,#000,transparent 85%)}
+.hero>*{position:relative;z-index:1}
+.hero h1{font-weight:800;font-size:1.6rem;margin:0;letter-spacing:-.01em}
+.hero .sub{color:var(--hero-dim);font-size:.92rem;margin-top:2px}
+.stages{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:16px}
+.stage{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 2px 8px;border-radius:14px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.05);color:inherit;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:border-color .2s,box-shadow .2s,background .2s}
+.stage .v{font-family:var(--num);font-weight:700;font-size:1.2rem;line-height:1}
+.stage .l{font-size:.72rem;color:var(--hero-dim);line-height:1.15;text-align:center}
+.stage[aria-pressed="true"]{border-color:var(--accent-2);background:rgba(19,194,227,.16);box-shadow:0 0 0 1px var(--accent-2) inset,0 0 22px var(--glow)}
+.stage[aria-pressed="true"] .v{color:#7ff0ff;text-shadow:0 0 10px var(--glow)}
+.stage[aria-pressed="true"] .l{color:#fff}
+
+.tools{display:flex;gap:8px;margin:16px 0 10px}
+.search{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 14px;min-width:0;box-shadow:var(--shadow)}
+.ghost{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:0 14px;white-space:nowrap;font-weight:600;font-size:.9rem;box-shadow:var(--shadow)}
+.note{font-size:.88rem;color:var(--ink-2);margin:6px 2px 10px}
+
+/* alert */
+.alert{background:var(--surface);border:1px solid var(--line);border-inline-start:4px solid var(--bad);border-radius:16px;padding:12px 14px;margin-top:14px;box-shadow:var(--shadow)}
+.alert-h{display:flex;align-items:center;gap:8px;color:var(--bad);font-weight:800;margin-bottom:4px}
+.alert-h .dot{width:9px;height:9px;border-radius:50%;background:var(--bad);box-shadow:0 0 0 4px var(--bad-bg);animation:pulse 1.8s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px transparent}}
+.alert-i{display:flex;gap:6px;align-items:baseline;width:100%;text-align:right;background:none;border:0;border-top:1px solid var(--line);padding:9px 0;font-size:.92rem}
+.alert-i span{margin-inline-start:auto;color:var(--bad);font-weight:700;white-space:nowrap;font-size:.85rem}
+
+/* cards */
+.list{display:flex;flex-direction:column;gap:10px}
+.card{display:block;width:100%;text-align:right;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 16px;box-shadow:var(--shadow);transition:transform .12s}
+.card:active{transform:scale(.99)}
+.card-top{display:flex;align-items:center;gap:12px}
+.ring{flex:none;position:relative;width:44px;height:44px}
+.ring svg{display:block;transform:rotate(-90deg)}
+.ring .t{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--num);font-size:.66rem;font-weight:700}
+.card-main{flex:1;min-width:0}
+.card-name{font-weight:700;font-size:1.08rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;color:var(--ink-2);margin-top:2px}
+.chip .n{font-family:var(--num);font-size:.68rem;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:6px;padding:2px 6px}
+.strip{display:flex;gap:3px;margin-top:12px}
+.seg{flex:1;height:6px;border-radius:99px;background:var(--na-bg)}
+.seg.ok{background:var(--ok)} .seg.part{background:var(--part)} .seg.site{background:var(--site)} .seg.office{background:var(--office)} .seg.bad{background:var(--bad)}
+.seg.na{background:repeating-linear-gradient(135deg,var(--na-bg) 0 3px,transparent 3px 6px);outline:1px solid var(--na-bg)}
+.card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tag{font-size:.78rem;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--surface-2);color:var(--ink-2)}
+.tag b{font-family:var(--num);font-size:.72rem;margin-inline-end:3px}
+.tag.ok{background:var(--ok-bg);color:var(--ok)} .tag.bad{background:var(--bad-bg);color:var(--bad)} .tag.site{background:var(--site-bg);color:var(--site)} .tag.office{background:var(--office-bg);color:var(--office)} .tag.part{background:var(--part-bg);color:var(--part)}
+.empty{text-align:center;padding:40px 16px;color:var(--ink-2)}
+
+/* tab bar + fab */
+.tabbar{position:fixed;inset:auto 0 0 0;z-index:6;display:flex;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));
+  background:color-mix(in srgb,var(--surface) 82%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.tabbar .in{display:flex;gap:4px;width:100%;max-width:520px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;padding:6px 0;border-radius:12px;color:var(--ink-2);font-size:.76rem;font-weight:600}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--accent);background:var(--site-bg)}
+.fab{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom,0px));left:18px;z-index:7;border:0;border-radius:18px;padding:14px 20px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 10px 28px rgba(47,107,255,.45)}
+
+/* detail */
+.dbar{display:flex;align-items:center;gap:10px}
+.back{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:inherit;border-radius:12px;padding:7px 14px;font-weight:600}
+.display{margin-inline-start:auto;font-family:var(--num);font-weight:800;font-size:1.7rem;color:#7ff0ff;text-shadow:0 0 14px var(--glow);
+  background:rgba(0,0,0,.28);border:1px solid rgba(127,240,255,.25);border-radius:12px;padding:2px 14px;min-width:54px;text-align:center}
+.dname{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.2);color:#fff;font-weight:800;font-size:1.45rem;padding:8px 0 6px;margin-top:8px}
+.hero .stages .stage .v{font-size:1rem}
+
+section.blk{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:6px 16px 12px;margin-top:14px;box-shadow:var(--shadow)}
+section.blk h2{display:flex;align-items:center;gap:8px;font-weight:800;font-size:1.05rem;margin:12px 0 6px}
+section.blk h2::before{content:"";width:4px;height:16px;border-radius:2px;background:linear-gradient(180deg,var(--accent),var(--accent-2))}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row .rl{flex:1;min-width:0;font-weight:600}
+.set{padding:10px 0;border-top:1px solid var(--line)}
+.set:first-of-type{border-top:0}
+.set .rl{font-weight:600;margin-bottom:6px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+select.pill{appearance:none;-webkit-appearance:none;border:1px solid var(--line);border-radius:11px;padding:9px 12px;background:var(--surface-2);font-weight:600;font-size:.92rem;min-width:132px;max-width:100%}
+.pair select.pill{min-width:0;width:100%}
+select.pill.ok{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+select.pill.part{background:var(--part-bg);color:var(--part);border-color:transparent}
+select.pill.site{background:var(--site-bg);color:var(--site);border-color:transparent}
+select.pill.office{background:var(--office-bg);color:var(--office);border-color:transparent}
+select.pill.bad{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+select.pill.na{background:var(--na-bg);color:var(--na);border-color:transparent}
+select option{color:#0e1630;background:#fff}
+
+.steps{list-style:none;margin:0;padding:0}
+.step{display:grid;grid-template-columns:28px 1fr;gap:6px 10px;padding:11px 0;border-top:1px solid var(--line)}
+.step:first-child{border-top:0}
+.step .n{grid-row:span 2;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-family:var(--num);font-size:.7rem;font-weight:700;background:var(--na-bg);color:var(--ink-2)}
+.step.done .n{background:var(--ok);color:#fff}
+.step.active .n{background:var(--part);color:#fff}
+.step.late .n{background:var(--bad);color:#fff;box-shadow:0 0 12px rgba(229,72,77,.5)}
+.step .sn{font-weight:600}
+.lt{display:block;color:var(--bad);font-weight:600;font-size:.8rem}
+.dates{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tg{border:1px solid var(--line);border-radius:11px;padding:8px;background:var(--surface-2);font-weight:700;font-size:.9rem;color:var(--ink-2);display:flex;flex-direction:column;align-items:center;line-height:1.2}
+.tg small{font-weight:400;font-size:.74rem;opacity:.85;font-family:var(--num)}
+.tg.plan.on{background:var(--part-bg);color:var(--part);border-color:var(--part)}
+.tg.fin.on{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
+
+.inline{display:flex;gap:8px;margin:6px 0 4px}
+.field{flex:1;min-width:0;border:1px solid var(--line);border-radius:11px;padding:10px 12px;background:var(--surface-2)}
+.primary{border:0;border-radius:11px;padding:0 16px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+.tasks{list-style:none;margin:6px 0 0;padding:0}
+.task{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.tchk{flex:none;width:30px;height:30px;border-radius:9px;border:2px solid var(--bad);background:var(--bad-bg);color:#fff;font-weight:800}
+.task.done .tchk{border-color:var(--ok);background:var(--ok)}
+.tt{flex:1;min-width:0;font-weight:600}
+.tt small{display:block;font-weight:400;font-size:.8rem;color:var(--bad)}
+.task.done .tt{color:var(--ink-2)} .task.done .tx{text-decoration:line-through}
+.task.done .tt small{color:var(--ok)}
+.x{flex:none;background:none;border:0;color:var(--ink-2);font-size:1rem;padding:6px}
+textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--surface-2);resize:vertical;margin:6px 0}
+.danger{background:none;border:1px solid var(--bad);color:var(--bad);border-radius:12px;padding:10px 18px;font-weight:700;margin:22px auto 0;display:block}
+.danger.armed{background:var(--bad);color:#fff}
+
+/* settings */
+.srow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.srow:first-of-type{border-top:0}
+.srow .rl{flex:1;min-width:0;font-weight:600}
+.srow .rl small{display:block;font-weight:400;color:var(--ink-2);font-size:.82rem}
+.switch{position:relative;width:50px;height:30px;flex:none}
+.switch input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.switch span{position:absolute;inset:0;border-radius:99px;background:var(--na-bg);border:1px solid var(--line);transition:background .2s}
+.switch span::after{content:"";position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch input:checked+span{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-color:transparent}
+.switch input:checked+span::after{transform:translateX(-20px)}
+.switch input:focus-visible+span{outline:2px solid var(--accent-2);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+.mchip{display:inline-flex;align-items:center;gap:4px;background:var(--site-bg);color:var(--site);border-radius:99px;padding:4px 6px 4px 12px;font-size:.88rem;font-weight:600;direction:ltr}
+.mchip button{background:none;border:0;color:inherit;padding:0 4px;font-size:.9rem}
+.info{background:var(--site-bg);color:var(--ink);border-radius:12px;padding:10px 12px;font-size:.88rem;margin:8px 0}
+pre.preview{white-space:pre-wrap;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px;font-family:var(--font);font-size:.86rem;max-height:420px;overflow:auto;margin:8px 0 0}
+.toast{position:fixed;bottom:calc(150px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--hero1);color:#fff;padding:10px 18px;border-radius:12px;font-size:.92rem;z-index:20;opacity:0;pointer-events:none;transition:opacity .2s;border:1px solid rgba(127,240,255,.25)}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2f6bff"/><stop offset="1" stop-color="#13c2e3"/></linearGradient></defs></svg>
+<div class="wrap" id="app"><div class="empty">טוען פרויקטים…</div></div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(function(){
+"use strict";
+const STATUSES=["לא התחיל","בהרכבה","באינטגרציה","בבדיקות","נמסר"];
+const DONE="נמסר";
+const ORDER_OPTS=["","אין הזמנה","הזמנה נפתחה","הזמנה אושרה","הזמנה התקבלה"];
+const ITEM_OPTS=["","מותקן","מותקן ללא ח\"כ","מותקן בהשאלה","באתר","במשרד","לא הגיע","לא הוזמן","לא נפרק","N/A"];
+const CHECK_OPTS=["","V","בתיקון"];
+const CHECK_LABEL={"":"—","V":"בוצע ✓","בתיקון":"בתיקון"};
+const SETS=[["cam","סט מצלמות"],["comm","סט תקשורת"],["cp","צ׳ק פוינט"]];
+const ITEMS=[["sikim","סיקים"],["cable","כבל לסיקים"],["mount","תושבת לסיקים"],["lock","מנעול בטיחות"],["remote","שלט רחוק"],["doorSensor","חיישן דלתות קומה"],["grounding","הארקות"]];
+const CHECKS=[["inspector","בודק חשמל"],["plans","תוכניות חשמל"]];
+const STEPS=["קבלת תוכניות מתקן","ביצוע תוכנית הכנות חשמל","פגישת סימוני חשמל באתר","בדיקת מוכנות 1","בדיקת מוכנות 2","סיום הכנות חשמל","התקנת מערכת תקשורת+מצלמות","פגישה עם מרכיב חשמל","חיווט מנוע מעלית","הפעלה ראשונית של מעלית","הסבר עבודה לחיווט מערכת חשמל","בדיקת התקדמות 1","בדיקת התקדמות 2","בדיקת התקדמות 3","בדיקת התקדמות 4","בדיקת התקדמות 5","בדיקות חשמליות 1","בדיקות חשמליות 2","סיום בדיקות חשמליות","העברה לאינטגרציה","בדיקת שלבי אינטגרציה"];
+const LATE=7;
+
+function cls(v){
+  if(v==="מותקן"||v==="V"||v==="הזמנה התקבלה")return"ok";
+  if(v==="מותקן ללא ח\"כ"||v==="מותקן בהשאלה"||v==="הזמנה אושרה"||v==="הזמנה נפתחה")return"part";
+  if(v==="באתר")return"site";
+  if(v==="במשרד")return"office";
+  if(v==="לא הגיע"||v==="לא הוזמן"||v==="לא נפרק"||v==="בתיקון"||v==="אין הזמנה")return"bad";
+  if(v==="N/A")return"na";
+  return"";
+}
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+function fmtDate(d){if(!d)return"";const p=d.split("-");return p[2]+"/"+p[1]}
+function bizDays(d){if(!d)return 0;const x=new Date(d+"T00:00:00"),e=new Date(today()+"T00:00:00");let n=0;while(x<e){x.setDate(x.getDate()+1);const w=x.getDay();if(w!==5&&w!==6)n++}return n}
+function daysOpen(d){if(!d)return 0;return Math.max(0,Math.round((new Date(today()+"T00:00:00")-new Date(d+"T00:00:00"))/864e5))}
+function openLabel(n){return n===0?"נפתחה היום":n===1?"פתוחה יום":"פתוחה "+n+" ימים"}
+function lateSteps(p){return p.steps.map((s,i)=>({i,s,d:bizDays(s.plan)})).filter(x=>x.s.plan&&!x.s.done&&x.d>=LATE)}
+
+function blank(name,order){
+  return{name:name||"פרויקט חדש",status:"לא התחיל",order:order,
+    sets:{cam:{order:"",status:""},comm:{order:"",status:""},cp:{order:"",status:""}},
+    items:Object.fromEntries(ITEMS.map(([k])=>[k,{order:"",status:""}])),
+    inspector:"",plans:"",steps:STEPS.map(()=>({plan:"",done:""})),tasks:[],notes:""};
+}
+function norm(p){
+  const b=blank(p.name,p.order||0);
+  const o=Object.assign({},b,p);
+  o.sets={};
+  SETS.forEach(([k])=>{o.sets[k]=Object.assign({order:"",status:""},(p.sets||{})[k]||{})});
+  o.items={};
+  ITEMS.forEach(([k])=>{const v=(p.items||{})[k];o.items[k]=typeof v==="string"?{order:"",status:v}:Object.assign({order:"",status:""},v||{})});
+  const st=Array.isArray(p.steps)?p.steps:[];
+  o.steps=STEPS.map((_,i)=>Object.assign({plan:"",done:""},st[i]||{}));
+  o.tasks=Array.isArray(p.tasks)?p.tasks.filter(x=>x&&x.text).map(x=>Object.assign({id:"",text:"",opened:"",done:""},x)):[];
+  return o;
+}
+function segments(p){return SETS.map(([k])=>p.sets[k].status).concat(ITEMS.map(([k])=>p.items[k].status),CHECKS.map(([k])=>p[k]))}
+function progress(p){const s=segments(p).filter(v=>cls(v)!=="na");if(!s.length)return 0;let n=0;s.forEach(v=>{const c=cls(v);if(c==="ok")n+=1;else if(c==="part")n+=.5});return Math.round(n/s.length*100)}
+
+const DEFAULT_SETTINGS={emailEnabled:false,recipients:[],from:"",emailHour:8,pushHour:9};
+function normSettings(s){const o=Object.assign({},DEFAULT_SETTINGS,s||{});o.recipients=Array.isArray(o.recipients)?o.recipients.filter(Boolean):[];return o}
+
+// ---------- storage ----------
+let projects={}; let settings=normSettings(); let mode="loading"; let col=null; let settingsRef=null;
+const LS="project-tracker-v1", LS_SET="project-tracker-settings";
+function lsLoad(k){try{return JSON.parse(localStorage.getItem(k)||"null")}catch(e){return null}}
+function lsSave(){try{localStorage.setItem(LS,JSON.stringify(projects));localStorage.setItem(LS_SET,JSON.stringify(settings))}catch(e){}
+  if(window.Android){try{window.Android.saveData(JSON.stringify({steps:STEPS,projects:projects,settings:settings}))}catch(e){}}}
+
+async function save(id,patch){
+  projects[id]=norm(Object.assign({},projects[id]||{},patch));
+  if(mode==="db"){
+    try{await col.doc(id).set(JSON.parse(JSON.stringify(projects[id])))}
+    catch(e){toast(e&&e.code==="invalid_argument"?"אין לך הרשאה לערוך":"השמירה נכשלה, נסה שוב")}
+  }else lsSave();
+}
+async function remove(id){
+  delete projects[id];
+  if(mode==="db"){try{await col.doc(id).delete()}catch(e){toast("המחיקה נכשלה")}}
+  else lsSave();
+}
+async function saveSettings(patch){
+  settings=normSettings(Object.assign({},settings,patch));
+  if(mode==="db"){try{await settingsRef.set(JSON.parse(JSON.stringify(settings)))}catch(e){toast("השמירה נכשלה, נסה שוב")}}
+  else lsSave();
+}
+
+let toastT;
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2400)}
+
+// ---------- summary (also used for the daily email in the app) ----------
+function buildSummary(){
+  const rows=[]; let nT=0,nS=0,nL=0;
+  sorted().forEach(([,p])=>{
+    const tasks=p.tasks.filter(x=>!x.done);
+    const steps=p.steps.map((s,i)=>({s,i,d:bizDays(s.plan)})).filter(x=>x.s.plan&&!x.s.done);
+    if(!tasks.length&&!steps.length)return;
+    nT+=tasks.length;nS+=steps.length;
+    const lines=["■ "+p.name+" ("+p.status+")"];
+    tasks.forEach(x=>lines.push("   • משימה: "+x.text+" – "+openLabel(daysOpen(x.opened))));
+    steps.forEach(x=>{const late=x.d>=LATE;if(late)nL++;lines.push("   • שלב: "+STEPS[x.i]+" – אושר לפני "+x.d+" ימי עבודה"+(late?" ⚠ באיחור":""))});
+    rows.push(lines.join("\n"));
+  });
+  const d=new Date();
+  const head="סיכום נושאים פתוחים – "+d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear()+"\n"+
+    nT+" משימות פתוחות · "+nS+" שלבים בביצוע"+(nL?" (מתוכם "+nL+" באיחור)":"")+"\n";
+  return rows.length?head+"\n"+rows.join("\n\n"):head+"\nאין נושאים פתוחים. כל הכבוד!";
+}
+
+// ---------- view state ----------
+let filter=-1; let q=""; let armedDelete=false; let lastList=""; let showPreview=false;
+const app=document.getElementById("app");
+function currentId(){const h=location.hash.slice(1);return h.startsWith("p-")?h.slice(2):null}
+function sorted(){return Object.entries(projects).sort((a,b)=>(a[1].order||0)-(b[1].order||0))}
+
+function render(force){
+  const ae=document.activeElement;
+  if(!force&&ae&&app.contains(ae)&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"))return;
+  const id=currentId(); const h=location.hash;
+  if(id&&projects[id])renderDetail(id);
+  else if(h==="#settings")renderSettings();
+  else renderList(h==="#done");
+}
+
+const ICON={
+  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>',
+  done:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'
+};
+function tabbar(cur){
+  const t=(k,hash,label,icon)=>'<button class="tab" data-tab="'+hash+'"'+(cur===k?' aria-current="page"':'')+'>'+icon+label+'</button>';
+  return '<nav class="tabbar"><div class="in">'+t("list","","פעילים",ICON.list)+t("done","done","גמורים",ICON.done)+t("settings","settings","הגדרות",ICON.gear)+'</div></nav>';
+}
+function stagesHTML(active,counts,attr){
+  return '<div class="stages" role="group">'+STATUSES.map((s,i)=>
+    '<button class="stage" '+attr+'="'+i+'" aria-pressed="'+(active===i)+'"><span class="v">'+(counts?counts[i]:i)+'</span><span class="l">'+esc(s)+'</span></button>').join("")+'</div>';
+}
+function ring(pct){
+  const c=2*Math.PI*18, off=c*(1-pct/100);
+  return '<div class="ring" aria-label="'+pct+'% הושלם"><svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="var(--na-bg)" stroke-width="4"/>'+
+    '<circle cx="22" cy="22" r="18" fill="none" stroke="url(#rg)" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg><span class="t">'+pct+'%</span></div>';
+}
+
+function renderList(done){
+  lastList=done?"done":"";
+  app.dataset.view=lastList||"list";
+  const all=sorted();
+  const counts=STATUSES.map(s=>all.filter(([,p])=>p.status===s).length);
+  let rows=all.filter(([,p])=>done?p.status===DONE:p.status!==DONE);
+  if(!done&&filter>=0&&filter<4)rows=rows.filter(([,p])=>p.status===STATUSES[filter]);
+  if(q)rows=rows.filter(([,p])=>p.name.includes(q));
+  const cards=rows.map(([id,p])=>{
+    const segs=segments(p); const c=k=>segs.filter(v=>cls(v)===k).length;
+    const fi=STATUSES.indexOf(p.status); const tags=[];
+    const openT=p.tasks.filter(x=>!x.done).length, late=lateSteps(p).length;
+    if(openT)tags.push('<span class="tag bad"><b>'+openT+'</b>משימות פתוחות</span>');
+    if(late)tags.push('<span class="tag bad"><b>'+late+'</b>שלבים באיחור</span>');
+    if(c("office"))tags.push('<span class="tag office"><b>'+c("office")+'</b>במשרד</span>');
+    if(c("site"))tags.push('<span class="tag site"><b>'+c("site")+'</b>באתר</span>');
+    if(c("bad"))tags.push('<span class="tag bad"><b>'+c("bad")+'</b>חסרים</span>');
+    const next=p.steps.map((s,i)=>({s,i})).find(x=>!x.s.done&&x.s.plan);
+    if(next)tags.push('<span class="tag part">בביצוע: '+esc(STEPS[next.i])+'</span>');
+    return '<button class="card" data-open="'+esc(id)+'"><div class="card-top">'+ring(progress(p))+'<div class="card-main"><div class="card-name">'+esc(p.name)+'</div>'+
+      '<span class="chip"><span class="n">'+(fi<0?"–":fi)+'</span>'+esc(p.status||"")+'</span></div></div>'+
+      '<div class="strip" aria-hidden="true">'+segs.map(v=>'<span class="seg '+cls(v)+'"></span>').join("")+'</div>'+
+      (tags.length?'<div class="card-meta">'+tags.join("")+'</div>':"")+'</button>';
+  }).join("");
+  let alertHTML="";
+  if(!done){
+    const overdue=all.flatMap(([id,p])=>lateSteps(p).map(x=>({id,p,x}))).sort((a,b)=>b.x.d-a.x.d);
+    const openTasks=all.flatMap(([id,p])=>p.tasks.filter(x=>!x.done).map(x=>({id,p,x,d:daysOpen(x.opened)}))).sort((a,b)=>b.d-a.d);
+    const n=overdue.length+openTasks.length;
+    if(n)alertHTML='<div class="alert" role="alert"><div class="alert-h"><span class="dot"></span>יש עדיין '+n+' נושאים פתוחים</div>'+
+      openTasks.map(o=>'<button class="alert-i" data-open="'+esc(o.id)+'"><b>'+esc(o.p.name)+'</b> · משימה: '+esc(o.x.text)+'<span>'+openLabel(o.d)+'</span></button>').join("")+
+      overdue.map(o=>'<button class="alert-i" data-open="'+esc(o.id)+'"><b>'+esc(o.p.name)+'</b> · '+esc(STEPS[o.x.i])+'<span>'+o.x.d+' ימי עבודה</span></button>').join("")+'</div>';
+  }
+  const head=done
+    ?'<header class="hero"><h1>פרויקטים גמורים</h1><div class="sub"><span class="num">'+counts[4]+'</span> פרויקטים שנמסרו</div></header>'
+    :'<header class="hero"><h1>מעקב פרויקטים</h1><div class="sub"><span class="num">'+(all.length-counts[4])+'</span> פרויקטים פעילים · לחיצה על שלב מסננת</div>'+stagesHTML(filter,counts,"data-filter")+'</header>';
+  app.innerHTML=head+alertHTML+
+    '<div class="tools"><input class="search" id="q" type="search" placeholder="חיפוש פרויקט" value="'+esc(q)+'" aria-label="חיפוש פרויקט"><button class="ghost" id="exp">ייצוא לאקסל</button></div>'+
+    '<div class="list">'+(cards||'<div class="empty">'+(mode==="loading"?"טוען פרויקטים…":done&&!counts[4]?"עדיין אין פרויקטים שנמסרו.":all.length?"אין פרויקטים שמתאימים לחיפוש.":"עדיין אין פרויקטים. הוסף את הראשון בכפתור למטה.")+'</div>')+'</div>'+
+    (done?'':'<button class="fab" id="add">+ פרויקט חדש</button>')+tabbar(done?"done":"list");
+}
+
+function sel(opts,val,attr,labels){
+  if(val&&!opts.includes(val))opts=opts.concat([val]);
+  return '<select class="pill '+cls(val)+'" '+attr+'>'+opts.map(o=>'<option value="'+esc(o)+'"'+(o===val?" selected":"")+'>'+esc(labels?labels[o]:(o||"—"))+'</option>').join("")+'</select>';
+}
+function tasksHTML(p){
+  return '<section class="blk"><h2>משימות</h2><div class="inline"><input class="field" id="newtask" placeholder="משימה חדשה" aria-label="משימה חדשה"><button class="primary" id="addtask">הוספה</button></div>'+
+    (p.tasks.length?'<ul class="tasks">'+p.tasks.slice().sort((a,b)=>(!!a.done)-(!!b.done)).map(x=>{
+      const d=daysOpen(x.opened);
+      const sub=x.done?'בוצע '+fmtDate(x.done):(d===0?'נפתחה היום':'נפתחה '+fmtDate(x.opened)+' · '+openLabel(d));
+      return '<li class="task'+(x.done?' done':'')+'"><button class="tchk" data-tdone="'+esc(x.id)+'" aria-pressed="'+!!x.done+'" aria-label="בוצע">'+(x.done?'✓':'')+'</button><span class="tt"><span class="tx">'+esc(x.text)+'</span><small>'+sub+'</small></span><button class="x" data-tdel="'+esc(x.id)+'" aria-label="מחיקת משימה">✕</button></li>'}).join("")+'</ul>':'<p class="note">אין משימות עדיין.</p>')+'</section>';
+}
+function renderDetail(id){
+  app.dataset.view=id;
+  const p=projects[id]; const fi=STATUSES.indexOf(p.status);
+  app.innerHTML=
+   '<header class="hero"><div class="dbar"><button class="back" id="back">› חזרה</button><span class="display" aria-label="שלב">'+(fi<0?"–":fi)+'</span></div>'+
+   '<input class="dname" id="name" value="'+esc(p.name)+'" aria-label="שם הפרויקט">'+stagesHTML(fi,null,"data-status")+'</header>'+
+   '<section class="blk"><h2>סטים</h2>'+SETS.map(([k,l])=>
+     '<div class="set"><div class="rl">'+l+'</div><div class="pair">'+sel(ORDER_OPTS,p.sets[k].order,'data-set="'+k+'" data-f="order" aria-label="'+l+' הזמנה"')+sel(ITEM_OPTS,p.sets[k].status,'data-set="'+k+'" data-f="status" aria-label="'+l+' סטטוס"')+'</div></div>').join("")+'</section>'+
+   '<section class="blk"><h2>ציוד</h2>'+ITEMS.map(([k,l])=>
+     '<div class="set"><div class="rl">'+l+'</div><div class="pair">'+sel(ORDER_OPTS,p.items[k].order,'data-item="'+k+'" data-f="order" aria-label="'+l+' הזמנה"')+sel(ITEM_OPTS,p.items[k].status,'data-item="'+k+'" data-f="status" aria-label="'+l+' סטטוס"')+'</div></div>').join("")+'</section>'+
+   '<section class="blk"><h2>בדיקות</h2>'+CHECKS.map(([k,l])=>
+     '<div class="row"><span class="rl">'+l+'</span>'+sel(CHECK_OPTS,p[k],'data-check="'+k+'" aria-label="'+l+'"',CHECK_LABEL)+'</div>').join("")+'</section>'+
+   tasksHTML(p)+
+   '<section class="blk"><h2>שלבי עבודה</h2><ol class="steps">'+STEPS.map((s,i)=>{
+     const st=p.steps[i]; const bd=bizDays(st.plan); const isLate=st.plan&&!st.done&&bd>=LATE; const c=st.done?"done":(isLate?"late":(st.plan?"active":""));
+     return '<li class="step '+c+'"><span class="n">'+(st.done?"✓":i+1)+'</span><span class="sn">'+esc(s)+(isLate?'<small class="lt">פתוח '+bd+' ימי עבודה מאז האישור</small>':'')+'</span><div class="dates">'+
+       '<button class="tg plan'+(st.plan?' on':'')+'" data-tstep="'+i+'" data-f="plan" aria-pressed="'+!!st.plan+'">'+(st.plan?'✓ ':'')+'אושר לביצוע'+(st.plan?'<small>'+fmtDate(st.plan)+'</small>':'')+'</button>'+
+       '<button class="tg fin'+(st.done?' on':'')+'" data-tstep="'+i+'" data-f="done" aria-pressed="'+!!st.done+'">'+(st.done?'✓ ':'')+'בוצע'+(st.done?'<small>'+fmtDate(st.done)+'</small>':'')+'</button></div></li>'}).join("")+'</ol></section>'+
+   '<section class="blk"><h2>הערות</h2><textarea id="notes" placeholder="הערות לפרויקט">'+esc(p.notes)+'</textarea></section>'+
+   '<button class="danger" id="del">מחיקת פרויקט</button>';
+  armedDelete=false;
+}
+
+function hourOpts(id,val){let h='<select class="pill" id="'+id+'" aria-label="שעה">';for(let i=5;i<=22;i++)h+='<option value="'+i+'"'+(i===+val?' selected':'')+'>'+String(i).padStart(2,"0")+':00</option>';return h+'</select>'}
+function renderSettings(){
+  app.dataset.view="settings";
+  const s=settings; const isApp=!!window.Android;
+  app.innerHTML='<header class="hero"><h1>הגדרות</h1><div class="sub">התראות וסיכום יומי במייל</div></header>'+
+   '<section class="blk"><h2>סיכום יומי במייל</h2>'+
+     '<div class="srow"><span class="rl">שליחה אוטומטית כל יום<small>סיכום כל המשימות הפתוחות והשלבים בביצוע, בכל הפרויקטים</small></span><label class="switch"><input type="checkbox" id="emailEnabled"'+(s.emailEnabled?' checked':'')+' aria-label="שליחה אוטומטית"><span></span></label></div>'+
+     '<div class="srow"><span class="rl">שעת שליחה</span>'+hourOpts("emailHour",s.emailHour)+'</div>'+
+     '<div class="srow" style="display:block"><span class="rl">נמענים</span>'+
+       (s.recipients.length?'<div class="chips">'+s.recipients.map((m,i)=>'<span class="mchip">'+esc(m)+'<button data-rmmail="'+i+'" aria-label="הסרת '+esc(m)+'">✕</button></span>').join("")+'</div>':'<p class="note">עדיין לא הוגדרו נמענים.</p>')+
+       '<div class="inline"><input class="field" id="newmail" type="email" inputmode="email" dir="ltr" placeholder="name@example.com" aria-label="כתובת מייל להוספה"><button class="primary" id="addmail">הוספה</button></div></div>'+
+     '<div class="srow" style="display:block"><span class="rl">שליחה מחשבון Gmail<small>כתובת ה-Gmail שממנה יישלח המייל</small></span>'+
+       '<div class="inline"><input class="field" id="fromMail" type="email" inputmode="email" dir="ltr" placeholder="your.name@gmail.com" value="'+esc(s.from)+'" aria-label="כתובת השולח"></div>'+
+       (isApp?'<div class="inline"><input class="field" id="appPass" type="password" dir="ltr" placeholder="'+(window.Android.hasPassword()?'סיסמה שמורה ✓ (להחלפה הזן חדשה)':'סיסמת אפליקציה (16 תווים)')+'" aria-label="סיסמת אפליקציה"><button class="primary" id="savePass">שמירה</button></div>'+
+              '<div class="inline"><button class="ghost" id="testMail" style="padding:10px 14px">שליחת מייל בדיקה עכשיו</button></div>'
+             :'<div class="info">את סיסמת האפליקציה של Gmail מזינים רק באפליקציה המותקנת בטלפון. היא נשמרת שם בלבד, והשליחה האוטומטית פועלת משם.</div>')+
+     '</div>'+
+     '<div class="srow" style="display:block"><button class="ghost" id="preview" style="padding:10px 14px">'+(showPreview?'הסתרת התצוגה המקדימה':'תצוגה מקדימה של המייל')+'</button>'+
+       (showPreview?'<pre class="preview">'+esc(buildSummary())+'</pre>':'')+'</div>'+
+   '</section>'+
+   '<section class="blk"><h2>התראות בטלפון</h2>'+
+     '<div class="srow"><span class="rl">שעת ההתראה היומית<small>משימות פתוחות ושלבים שלא בוצעו תוך 7 ימי עבודה</small></span>'+hourOpts("pushHour",s.pushHour)+'</div>'+
+     (isApp?'':'<div class="info">ההתראות והמייל האוטומטי פועלים באפליקציה המותקנת (APK). כאן אפשר להגדיר אותם מראש.</div>')+
+   '</section>'+tabbar("settings");
+}
+
+// ---------- events ----------
+const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function addMail(){const inp=document.getElementById("newmail");const v=(inp.value||"").trim().toLowerCase();
+  if(!EMAIL_RE.test(v)){toast("כתובת המייל לא תקינה");inp.focus();return}
+  if(settings.recipients.includes(v)){toast("הכתובת כבר ברשימה");return}
+  saveSettings({recipients:settings.recipients.concat([v])});inp.value="";renderSettings();toast("הנמען נוסף")}
+function addTask(id){const inp=document.getElementById("newtask");const v=inp?inp.value.trim():"";if(!v){if(inp)inp.focus();return}
+  const tasks=projects[id].tasks.concat([{id:"t"+Date.now().toString(36),text:v,opened:today(),done:""}]);inp.value="";save(id,{tasks});render(true);toast("המשימה נוספה")}
+
+app.addEventListener("click",e=>{
+  const t=e.target.closest("button"); if(!t)return;
+  if(t.dataset.open){location.hash="p-"+t.dataset.open;window.scrollTo(0,0);return}
+  if(t.dataset.tab!=null){if(location.hash.slice(1)!==t.dataset.tab)location.hash=t.dataset.tab;render(true);window.scrollTo(0,0);return}
+  if(t.dataset.filter!=null){const i=+t.dataset.filter;if(i===4){location.hash="done";return}filter=filter===i?-1:i;renderList(false);return}
+  if(t.id==="addmail"){addMail();return}
+  if(t.dataset.rmmail!=null){const r=settings.recipients.slice();r.splice(+t.dataset.rmmail,1);saveSettings({recipients:r});renderSettings();return}
+  if(t.id==="preview"){showPreview=!showPreview;renderSettings();return}
+  if(t.id==="savePass"){const v=document.getElementById("appPass").value.replace(/\s/g,"");if(v.length<8){toast("הסיסמה קצרה מדי");return}try{window.Android.savePassword(v);renderSettings();toast("הסיסמה נשמרה בטלפון")}catch(_){}return}
+  if(t.id==="testMail"){try{window.Android.sendTestEmail();toast("שולח מייל בדיקה…")}catch(_){}return}
+  const id=currentId();
+  if(t.id==="addtask"&&id){addTask(id);return}
+  if(t.dataset.tdone!=null&&id){const tasks=projects[id].tasks.map(x=>x.id===t.dataset.tdone?Object.assign({},x,{done:x.done?"":today()}):x);save(id,{tasks});render(true);return}
+  if(t.dataset.tdel!=null&&id){const tasks=projects[id].tasks.filter(x=>x.id!==t.dataset.tdel);save(id,{tasks});render(true);return}
+  if(t.dataset.tstep!=null&&id){const i=+t.dataset.tstep;const steps=projects[id].steps.map(s=>Object.assign({},s));const s=steps[i];
+    if(t.dataset.f==="plan"){if(s.plan){s.plan="";s.done=""}else s.plan=today()}
+    else{if(s.done)s.done="";else{s.done=today();if(!s.plan)s.plan=s.done}}
+    save(id,{steps});render(true);return}
+  if(t.dataset.status!=null&&id){save(id,{status:STATUSES[+t.dataset.status]});render(true);return}
+  if(t.id==="back"){const target=(location.hash==="#done"||!id)?"":lastList;if(location.hash.slice(1)!==target)location.hash=target;render(true);window.scrollTo(0,0);return}
+  if(t.id==="add"){
+    const nid="p"+Date.now().toString(36);
+    const maxO=Math.max(-1,...Object.values(projects).map(p=>p.order||0));
+    save(nid,blank("פרויקט חדש",maxO+1));
+    location.hash="p-"+nid;
+    setTimeout(()=>{const n=document.getElementById("name");if(n){n.focus();n.select()}},50);
+    return;
+  }
+  if(t.id==="del"&&id){
+    if(!armedDelete){armedDelete=true;t.classList.add("armed");t.textContent="לחץ שוב לאישור המחיקה";return}
+    remove(id);location.hash=lastList;render(true);toast("הפרויקט נמחק");return;
+  }
+  if(t.id==="exp")exportCsv();
+});
+app.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.id==="emailEnabled"){if(t.checked&&!settings.recipients.length)toast("כדאי להוסיף נמען אחד לפחות");saveSettings({emailEnabled:t.checked});return}
+  if(t.id==="emailHour"||t.id==="pushHour"){saveSettings({[t.id]:+t.value});toast("נשמר");return}
+  const id=currentId(); if(!id||!projects[id])return; const p=projects[id];
+  if(t.dataset.set){const sets=JSON.parse(JSON.stringify(p.sets));sets[t.dataset.set][t.dataset.f]=t.value;save(id,{sets});t.className="pill "+cls(t.value)}
+  else if(t.dataset.item){const items=JSON.parse(JSON.stringify(p.items));items[t.dataset.item][t.dataset.f]=t.value;save(id,{items});t.className="pill "+cls(t.value)}
+  else if(t.dataset.check){save(id,{[t.dataset.check]:t.value});t.className="pill "+cls(t.value)}
+});
+app.addEventListener("input",e=>{
+  if(e.target.id==="q"){q=e.target.value.trim();const pos=e.target.selectionStart;renderList(location.hash==="#done");const n=document.getElementById("q");n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}
+});
+app.addEventListener("focusout",e=>{
+  if(e.target.id==="fromMail"){const v=e.target.value.trim().toLowerCase();if(v&&!EMAIL_RE.test(v)){toast("כתובת השולח לא תקינה");return}if(v!==settings.from){saveSettings({from:v});toast("נשמר")}return}
+  const id=currentId(); if(!id||!projects[id])return;
+  if(e.target.id==="name"){const v=e.target.value.trim()||"ללא שם";if(v!==projects[id].name)save(id,{name:v})}
+  if(e.target.id==="notes"){if(e.target.value!==projects[id].notes)save(id,{notes:e.target.value})}
+});
+app.addEventListener("keydown",e=>{
+  if(e.key!=="Enter")return;
+  if(e.target.id==="name")e.target.blur();
+  if(e.target.id==="newtask"){const id=currentId();if(id)addTask(id)}
+  if(e.target.id==="newmail")addMail();
+  if(e.target.id==="fromMail")e.target.blur();
+});
+window.addEventListener("hashchange",()=>{render(true);window.scrollTo(0,0)});
+
+async function exportCsv(){
+  const head=["פרויקט","סטטוס פרויקט"].concat(...SETS.map(([,l])=>[l+" - הזמנה",l+" - סטטוס"]),ITEMS.flatMap(([,l])=>[l+" - הזמנה",l+" - סטטוס"]),CHECKS.map(([,l])=>l),STEPS.flatMap(s=>[s+" - אושר לביצוע",s+" - בוצע"]),["משימות פתוחות","הערות"]);
+  const rows=sorted().map(([,p])=>[p.name,p.status].concat(...SETS.map(([k])=>[p.sets[k].order,p.sets[k].status]),ITEMS.flatMap(([k])=>[p.items[k].order,p.items[k].status]),CHECKS.map(([k])=>p[k]),p.steps.flatMap(s=>[s.plan,s.done]),[p.tasks.filter(x=>!x.done).map(x=>x.text).join(" | "),p.notes]));
+  const csv="\ufeff"+[head].concat(rows).map(r=>r.map(v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const name="מעקב פרויקטים "+today()+".csv";
+  if(window.Android){window.Android.shareCsv(csv,name);return}
+  let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use("downloads"):null}catch(e){}
+  if(!dl){toast("ייצוא לא זמין בתצוגה הזו");return}
+  try{await dl.save({filename:name,data:csv});toast("הקובץ נשמר")}
+  catch(e){if(e&&e.code!=="declined")toast("הייצוא נכשל")}
+}
+
+const SEED={"p01": {"inspector": "V", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "מותקן", "mount": "מותקן", "remote": "מותקן", "sikim": "מותקן"}, "name": "מכבי", "notes": "", "order": 0, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p02": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "יגור", "notes": "", "order": 1, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p03": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "קלישר", "notes": "", "order": 2, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p04": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "מנדלשטם", "notes": "", "order": 3, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p05": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "לווין", "notes": "", "order": 4, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "אין הזמנה", "status": "לא הוזמן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p06": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "מותקן", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "זלטופובסקי", "notes": "", "order": 5, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p07": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "מותקן", "mount": "מותקן", "remote": "מותקן", "sikim": "מותקן"}, "name": "רמברנדט", "notes": "", "order": 6, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p08": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "מותקן", "sikim": "מותקן"}, "name": "יהודה הלוי", "notes": "", "order": 7, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p09": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "פיקוס", "notes": "", "order": 8, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p10": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "במשרד", "sikim": "מותקן"}, "name": "וויצמן", "notes": "", "order": 9, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p11": {"inspector": "", "items": {"cable": {"order": "", "status": "מותקן"}, "doorSensor": {"order": "", "status": ""}, "grounding": {"order": "", "status": ""}, "lock": {"order": "", "status": ""}, "mount": {"order": "", "status": "מותקן"}, "remote": {"order": "", "status": "N/A"}, "sikim": {"order": "", "status": "מותקן"}}, "name": "לסל", "notes": "", "order": 10, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בבדיקות", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}], "tasks": []}, "p12": {"inspector": "", "items": {"cable": {"order": "", "status": "מותקן"}, "doorSensor": {"order": "", "status": ""}, "grounding": {"order": "", "status": ""}, "lock": {"order": "", "status": ""}, "mount": {"order": "", "status": "מותקן"}, "remote": {"order": "", "status": ""}, "sikim": {"order": "", "status": "מותקן"}}, "name": "זבוטינסקי 89", "notes": "", "order": 11, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "באתר"}}, "status": "בבדיקות", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}], "tasks": []}, "p13": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "", "grounding": "", "lock": "", "mount": "מותקן", "remote": "", "sikim": "מותקן"}, "name": "סהרון", "notes": "", "order": 12, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "באתר"}}, "status": "בבדיקות", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p14": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "", "grounding": "", "lock": "", "mount": "מותקן", "remote": "", "sikim": "מותקן"}, "name": "סמדר", "notes": "", "order": 13, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p15": {"inspector": "", "items": {"cable": "באתר", "doorSensor": "", "grounding": "", "lock": "", "mount": "באתר", "remote": "", "sikim": "באתר"}, "name": "בית-לחם", "notes": "", "order": 14, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p16": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "", "grounding": "", "lock": "", "mount": "מותקן", "remote": "", "sikim": "מותקן"}, "name": "בן ציון 13", "notes": "", "order": 15, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p17": {"inspector": "", "items": {"cable": "במשרד", "doorSensor": "", "grounding": "", "lock": "", "mount": "במשרד", "remote": "", "sikim": "במשרד"}, "name": "בן יהודה 186", "notes": "", "order": 16, "plans": "בתיקון", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p18": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "", "grounding": "", "lock": "", "mount": "מותקן", "remote": "", "sikim": "מותקן"}, "name": "בודנהיימר 37", "notes": "", "order": 17, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "באתר"}}, "status": "בבדיקות", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p19": {"inspector": "", "items": {"cable": {"order": "", "status": "באתר"}, "doorSensor": {"order": "", "status": ""}, "grounding": {"order": "", "status": ""}, "lock": {"order": "", "status": "N/A"}, "mount": {"order": "", "status": "באתר"}, "remote": {"order": "", "status": ""}, "sikim": {"order": "", "status": "באתר"}}, "name": "נחמני 35", "notes": "", "order": 18, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}], "tasks": []}, "p20": {"inspector": "", "items": {"cable": "במשרד", "doorSensor": "", "grounding": "", "lock": "", "mount": "במשרד", "remote": "", "sikim": "במשרד"}, "name": "רות 6 ר\"ג", "notes": "", "order": 19, "plans": "", "sets": {"cam": {"order": "הזמנה נפתחה", "status": "לא הגיע"}, "comm": {"order": "אין הזמנה", "status": "לא הוזמן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p21": {"inspector": "", "items": {"cable": "לא נפרק", "doorSensor": "", "grounding": "", "lock": "", "mount": "לא נפרק", "remote": "", "sikim": "לא נפרק"}, "name": "פועלי הרכבת 25", "notes": "", "order": 20, "plans": "", "sets": {"cam": {"order": "הזמנה נפתחה", "status": "לא הגיע"}, "comm": {"order": "אין הזמנה", "status": "לא הוזמן"}, "cp": {"order": "אין הזמנה", "status": "לא הוזמן"}}, "status": "לא התחיל", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p22": {"inspector": "", "items": {"cable": "במשרד", "doorSensor": "", "grounding": "", "lock": "", "mount": "במשרד", "remote": "", "sikim": "במשרד"}, "name": "פראג 4", "notes": "", "order": 21, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "באתר"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p23": {"inspector": "", "items": {"cable": "במשרד", "doorSensor": "", "grounding": "", "lock": "", "mount": "במשרד", "remote": "", "sikim": "במשרד"}, "name": "פרנקפורט 3", "notes": "", "order": 22, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p24": {"inspector": "", "items": {"cable": "לא נפרק", "doorSensor": "", "grounding": "", "lock": "", "mount": "לא נפרק", "remote": "", "sikim": "לא נפרק"}, "name": "יצחק הלוי 7 חולון", "notes": "", "order": 23, "plans": "", "sets": {"cam": {"order": "אין הזמנה", "status": "לא הוזמן"}, "comm": {"order": "אין הזמנה", "status": "לא הוזמן"}, "cp": {"order": "אין הזמנה", "status": "לא הוזמן"}}, "status": "לא התחיל", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p25": {"inspector": "", "items": {"cable": "לא נפרק", "doorSensor": "", "grounding": "", "lock": "", "mount": "לא נפרק", "remote": "", "sikim": "לא נפרק"}, "name": "אדם הכהן 14 ת\"א", "notes": "", "order": 24, "plans": "", "sets": {"cam": {"order": "אין הזמנה", "status": "לא הוזמן"}, "comm": {"order": "אין הזמנה", "status": "לא הוזמן"}, "cp": {"order": "אין הזמנה", "status": "לא הוזמן"}}, "status": "לא התחיל", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}};
+// ---------- boot ----------
+render(true);
+(async()=>{
+  let db=null;
+  try{db=!window.Android&&window.claude&&window.claude.use?await window.claude.use("db"):null}catch(e){db=null}
+  if(db){
+    mode="db"; col=db.collection("projects"); settingsRef=db.doc("settings/main");
+    col.onSnapshot(snap=>{const next={};snap.docs.forEach(d=>{const v=d.data();if(v)next[d.id]=norm(v)});projects=next;render(false)},()=>toast("החיבור לנתונים נקטע, רענן את הדף"));
+    settingsRef.onSnapshot(s=>{settings=normSettings(s.exists?s.data():null);if(location.hash==="#settings")render(false)},()=>{});
+  }else{
+    mode="local";
+    let raw=lsLoad(LS)||{};
+    if(!Object.keys(raw).length&&typeof SEED!=="undefined"&&!localStorage.getItem(LS+"-seeded")){raw=SEED;try{localStorage.setItem(LS+"-seeded","1")}catch(e){}}
+    projects={};Object.keys(raw).forEach(k=>projects[k]=norm(raw[k]));
+    settings=normSettings(lsLoad(LS_SET));
+    lsSave();render(true);
+  }
+})();
+})();
+</script>
+</body>
+</html>
