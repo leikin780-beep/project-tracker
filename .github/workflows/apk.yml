@@ -33,16 +33,4 @@ jobs:
           put tracker-app.html        "$M/assets/index.html"
           for j in MainActivity CheckWorker Summary Mailer Store; do put "$j.java" "$M/java/com/projects/tracker/$j.java"; done
           put file_paths.xml              "$M/res/xml/file_paths.xml"
-          put colors.xml                  "$M/res/values/colors.xml"
-          put ic_launcher.xml             "$M/res/mipmap-anydpi-v26/ic_launcher.xml"
-          put ic_launcher_foreground.xml  "$M/res/drawable/ic_launcher_foreground.xml"
-          put ic_notify.xml               "$M/res/drawable/ic_notify.xml"
-          find "$B" -type f | sort
-      - name: Build
-        run: |
-          cd "$RUNNER_TEMP/b"
-          gradle assembleDebug --no-daemon
-      - uses: actions/upload-artifact@v4
-        with:
-          name: project-tracker-apk
-          path: ${{ runner.temp }}/b/build/outputs/apk/debug/app-debug.apk
+          put
