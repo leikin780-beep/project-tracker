@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,29 +23,36 @@ jobs:
         run: |
           set -e
           B="$RUNNER_TEMP/b"; M="$B/src/main"
-          mkdir -p "$M/java/com/projects/tracker" "$M/assets" "$M/res/drawable" "$M/res/mipmap-anydpi-v26" "$M/res/values" "$M/res/xml"
-          put() {
+          mkdir -p "$M/java/com/projects/tracker" "$M/assets" "$M/res"
+          one() {
             p=$(find . -path ./.git -prune -o -type f -name "$1" -print | head -1)
             if [ -z "$p" ]; then echo "::error::Missing file: $1"; exit 1; fi
             cp "$p" "$2"
           }
-          put tracker-settings.gradle "$B/settings.gradle"
-          put tracker-build.gradle    "$B/build.gradle"
-          put tracker.properties      "$B/gradle.properties"
-          put TrackerManifest.xml     "$M/AndroidManifest.xml"
-          put tracker-app.html        "$M/assets/index.html"
-          for j in MainActivity CheckWorker Summary Mailer Store; do put "$j.java" "$M/java/com/projects/tracker/$j.java"; done
-          put file_paths.xml              "$M/res/xml/file_paths.xml"
-          put colors.xml                  "$M/res/values/colors.xml"
-          put ic_launcher.xml             "$M/res/mipmap-anydpi-v26/ic_launcher.xml"
-          put ic_launcher_foreground.xml  "$M/res/drawable/ic_launcher_foreground.xml"
-          put ic_notify.xml               "$M/res/drawable/ic_notify.xml"
-          find "$B" -type f | sort
+          one tracker-settings.gradle "$B/settings.gradle"
+          one tracker-build.gradle    "$B/build.gradle"
+          one tracker.properties      "$B/gradle.properties"
+          one tracker.keystore        "$B/tracker.keystore"
+          one TrackerManifest.xml     "$M/AndroidManifest.xml"
+          one tracker-app.html        "$M/assets/index.html"
+          # every .java file -> source folder
+          find . -path ./.git -prune -o -type f -name "*.java" -print | while read -r f; do cp "$f" "$M/java/com/projects/tracker/"; done
+          # res__<folder>__<file> -> res/<folder>/<file>
+          find . -path ./.git -prune -o -type f -name "res__*" -print | while read -r f; do
+            n=$(basename "$f"); rest=${n#res__}; dir=${rest%%__*}; file=${rest#*__}
+            mkdir -p "$M/res/$dir"; cp "$f" "$M/res/$dir/$file"
+          done
+          find "$B" -type f | sed "s|$B/||" | sort
       - name: Build
         run: |
           cd "$RUNNER_TEMP/b"
           gradle assembleDebug --no-daemon
-      - uses: actions/upload-artifact@v4
-        with:
-          name: project-tracker-apk
-          path: ${{ runner.temp }}/b/build/outputs/apk/debug/app-debug.apk
+          cp build/outputs/apk/debug/*.apk "$RUNNER_TEMP/ProjectTracker.apk"
+      - name: Publish for download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ github.run_number }}" "$RUNNER_TEMP/ProjectTracker.apk" \
+            --repo "${{ github.repository }}" \
+            --title "מעקב פרויקטים – גרסה ${{ github.run_number }}" \
+            --notes "להורדה: לחיצה על ProjectTracker.apk"

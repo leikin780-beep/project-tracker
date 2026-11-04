@@ -60,6 +60,7 @@ public class CheckWorker extends Worker {
             return Result.success();
         }
 
+        TaskWidget.refreshAll(c);
         SharedPreferences st = Store.state(c);
         String today = LocalDate.now().toString();
         int hour = LocalTime.now().getHour();
@@ -99,7 +100,7 @@ public class CheckWorker extends Worker {
         Summary s = Summary.build(root);
         String subject = (test ? "[בדיקה] " : "") + "סיכום נושאים פתוחים – " + s.openTasks + " משימות, " + s.lateSteps + " שלבים באיחור";
         try {
-            Mailer.send(from, pass, to, subject, s.emailText);
+            Mailer.send(from, pass, to, subject, s.emailText, s.emailHtml);
             return null;
         } catch (javax.mail.AuthenticationFailedException e) {
             return "Gmail דחה את ההתחברות. בדוק את כתובת השולח ואת סיסמת האפליקציה.";
