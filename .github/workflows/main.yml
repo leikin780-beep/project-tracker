@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,12 +19,38 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Arrange project files
+        run: |
+          set -e
+          B="$RUNNER_TEMP/b"; M="$B/src/main"
+          mkdir -p "$M/java/com/projects/tracker" "$M/assets" "$M/res"
+          one() {
+            p=$(find . -path ./.git -prune -o -type f -name "$1" -print | head -1)
+            if [ -z "$p" ]; then echo "::error::Missing file: $1"; exit 1; fi
+            cp "$p" "$2"
+          }
+          one tracker-settings.gradle "$B/settings.gradle"
+          one tracker-build.gradle    "$B/build.gradle"
+          one tracker.properties      "$B/gradle.properties"
+          one tracker.keystore        "$B/tracker.keystore"
+          one TrackerManifest.xml     "$M/AndroidManifest.xml"
+          one tracker-app.html        "$M/assets/index.html"
+          for j in MainActivity CheckWorker Summary Mailer Store TaskWidget TaskWidgetService; do one "$j.java" "$M/java/com/projects/tracker/$j.java"; done
+          find . -path ./.git -prune -o -type f -name "res__*" -print | while read -r f; do
+            n=$(basename "$f"); rest=${n#res__}; dir=${rest%%__*}; file=${rest#*__}
+            mkdir -p "$M/res/$dir"; cp "$f" "$M/res/$dir/$file"
+          done
+          find "$B" -type f | sed "s|$B/||" | sort
       - name: Build
         run: |
-          DIR=$(dirname "$(find . -name settings.gradle -not -path './.git/*' | head -1)")
-          cd "$DIR"
+          cd "$RUNNER_TEMP/b"
           gradle assembleDebug --no-daemon
-      - uses: actions/upload-artifact@v4
-        with:
-          name: project-tracker-apk
-          path: '**/app/build/outputs/apk/debug/app-debug.apk'
+          cp build/outputs/apk/debug/*.apk "$RUNNER_TEMP/ProjectTracker.apk"
+      - name: Publish for download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "build-${{ github.run_id }}" "$RUNNER_TEMP/ProjectTracker.apk" \
+            --repo "${{ github.repository }}" \
+            --title "מעקב פרויקטים – $(date +%d/%m/%Y\ %H:%M)" \
+            --notes "להורדה: לחיצה על ProjectTracker.apk"
