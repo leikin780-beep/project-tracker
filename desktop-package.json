@@ -1,0 +1,22 @@
+{
+  "name": "project-tracker-desktop",
+  "productName": "ProjectTracker",
+  "version": "7.0.0",
+  "description": "Project tracker for the computer, synced with the phone app",
+  "author": "Project Tracker",
+  "main": "main.js",
+  "build": {
+    "appId": "com.projects.tracker.desktop",
+    "productName": "ProjectTracker",
+    "files": ["main.js", "index.html", "icon.png"],
+    "win": {
+      "target": "portable",
+      "icon": "icon.png",
+      "artifactName": "ProjectTracker-Desktop.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "31.7.0",
+    "electron-builder": "24.13.3"
+  }
+}

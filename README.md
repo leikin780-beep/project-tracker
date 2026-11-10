@@ -1,16 +1,14 @@
-# מעקב פרויקטים – גרסה 3
+# מעקב פרויקטים – גרסה 7 (טלפון + מחשב)
 
-## עדכון ב-GitHub
-1. Add file → Upload files: מעלים את כל הקבצים מהתיקייה הזו (קבצים עם אותו שם יוחלפו), Commit changes.
-2. מחליפים פעם אחת את קובץ הבנייה: Actions → Build APK → לחיצה על שם הקובץ (main.yml) → עיפרון → מוחקים הכול ומדביקים את התוכן של build-apk.yml → Commit changes.
-3. אחרי וי ירוק: Code → Releases → ProjectTracker.apk.
+## עדכון ב-GitHub (ב-repository של האפליקציה)
+1. Add file → Upload files: מעלים את כל הקבצים, Commit changes.
+2. מחליפים את .github/workflows/main.yml בתוכן של build-apk.yml (פעם אחת, בגלל התוכנה למחשב).
+3. אחרי וי ירוק: Releases → ProjectTracker.apk לטלפון, ProjectTracker-Desktop.exe למחשב.
 
-מגרסה זו האפליקציה חתומה במפתח קבוע (tracker.keystore). עדכונים הבאים יותקנו מעל הגרסה הקיימת והנתונים יישמרו.
-את המעבר לגרסה הזו צריך לעשות פעם אחת עם הסרה של הגרסה הקודמת.
-
-בעדכונים הבאים: מעלים רק את הקבצים ששונו. אין צורך לגעת שוב בקובץ הבנייה.
-
-## הגדרת המייל האוטומטי
-1. בחשבון Google של השולח מפעילים אימות דו-שלבי.
-2. ב-myaccount.google.com/apppasswords יוצרים סיסמת אפליקציה ומעתיקים את 16 התווים.
-3. באפליקציה: הגדרות → כתובת Gmail, סיסמת אפליקציה, נמענים, ומפעילים "שליחה אוטומטית".
+## הגדרת סנכרון (פעם אחת)
+1. ב-GitHub: New repository → שם: tracker-data → Private → Create.
+2. Settings (של החשבון) → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token:
+   Repository access: Only select repositories → tracker-data.
+   Permissions → Contents: Read and write. מעתיקים את הטוקן.
+3. בטלפון: הגדרות → סנכרון בין מכשירים → מאגר: <שם-משתמש>/tracker-data, טוקן → שמירה וחיבור.
+4. במחשב: אותו דבר.

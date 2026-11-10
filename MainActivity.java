@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.database.Cursor;
+import android.provider.AlarmClock;
 import android.provider.CalendarContract;
 import android.speech.RecognizerIntent;
 import android.app.Activity;
@@ -99,7 +100,8 @@ public class MainActivity extends Activity {
 
     private static String hashFor(Intent i) {
         String a = i != null ? i.getAction() : null;
-        if (TaskWidget.ACTION_NEW_TASK.equals(a)) return "#newtask";
+        if (TaskWidget.ACTION_NEW_TASK.equals(a)) return "#newtask-voice";
+        if (TaskWidget.ACTION_REMIND.equals(a)) return "#reminder-voice";
         if (TaskWidget.ACTION_MEETING.equals(a)) return "#meeting-voice";
         return "";
     }
@@ -110,7 +112,8 @@ public class MainActivity extends Activity {
         setIntent(intent);
         String h = hashFor(intent);
         if (web == null) return;
-        if (h.equals("#newtask")) web.evaluateJavascript("window.openNewTask&&window.openNewTask()", null);
+        if (h.equals("#newtask-voice")) web.evaluateJavascript("window.openNewTask&&window.openNewTask(true)", null);
+        if (h.equals("#reminder-voice")) web.evaluateJavascript("window.openReminder&&window.openReminder(true)", null);
         if (h.equals("#meeting-voice")) web.evaluateJavascript("window.openMeeting&&window.openMeeting(true)", null);
     }
 
@@ -235,11 +238,42 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void startVoice() {
+            startVoiceWith("אמור את פרטי הפגישה");
+        }
+
+        @JavascriptInterface
+        public boolean setAlarm(String json) {
+            try {
+                JSONObject o = new JSONObject(json);
+                Intent i = new Intent(AlarmClock.ACTION_SET_ALARM)
+                        .putExtra(AlarmClock.EXTRA_HOUR, o.getInt("hour"))
+                        .putExtra(AlarmClock.EXTRA_MINUTES, o.getInt("minute"))
+                        .putExtra(AlarmClock.EXTRA_MESSAGE, o.optString("message"))
+                        .putExtra(AlarmClock.EXTRA_VIBRATE, true)
+                        .putExtra(AlarmClock.EXTRA_SKIP_UI, true);
+                if (i.resolveActivity(getPackageManager()) == null) return false;
+                runOnUiThread(() -> startActivity(i));
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void shareText(String text) {
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType("text/plain");
+            send.putExtra(Intent.EXTRA_TEXT, text);
+            runOnUiThread(() -> startActivity(Intent.createChooser(send, "שיתוף")));
+        }
+
+        @JavascriptInterface
+        public void startVoiceWith(String prompt) {
             runOnUiThread(() -> {
                 Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
                 i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
                 i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "he-IL");
-                i.putExtra(RecognizerIntent.EXTRA_PROMPT, "אמור את פרטי הפגישה");
+                i.putExtra(RecognizerIntent.EXTRA_PROMPT, prompt);
                 try {
                     startActivityForResult(i, VOICE);
                 } catch (ActivityNotFoundException e) {
@@ -290,12 +324,12 @@ public class MainActivity extends Activity {
                 v.put(CalendarContract.Events.DTSTART, e.getLong("start"));
                 v.put(CalendarContract.Events.DTEND, e.getLong("end"));
                 v.put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().getID());
-                int rem = e.optInt("reminder", 0);
-                v.put(CalendarContract.Events.HAS_ALARM, rem > 0 ? 1 : 0);
+                int rem = e.optInt("reminder", -1);
+                v.put(CalendarContract.Events.HAS_ALARM, rem >= 0 ? 1 : 0);
                 Uri uri = getContentResolver().insert(CalendarContract.Events.CONTENT_URI, v);
                 if (uri == null) return "{\"ok\":false,\"error\":\"היומן לא קיבל את הפגישה\"}";
                 long id = ContentUris.parseId(uri);
-                if (rem > 0) {
+                if (rem >= 0) {
                     ContentValues r = new ContentValues();
                     r.put(CalendarContract.Reminders.EVENT_ID, id);
                     r.put(CalendarContract.Reminders.MINUTES, rem);

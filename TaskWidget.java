@@ -16,6 +16,7 @@ public class TaskWidget extends AppWidgetProvider {
     static final String ACTION_NEW_TASK = "com.projects.tracker.NEW_TASK";
     static final String ACTION_MEETING = "com.projects.tracker.MEETING_VOICE";
     static final String ACTION_DONE = "com.projects.tracker.TASK_DONE";
+    static final String ACTION_REMIND = "com.projects.tracker.REMIND_VOICE";
 
     private static PendingIntent open(Context context, String action, int code) {
         Intent open = new Intent(context, MainActivity.class);
@@ -34,6 +35,7 @@ public class TaskWidget extends AppWidgetProvider {
             views.setOnClickPendingIntent(R.id.widget_logo, open(context, "android.intent.action.MAIN", 6));
             views.setOnClickPendingIntent(R.id.btn_task, open(context, ACTION_NEW_TASK, 7));
             views.setOnClickPendingIntent(R.id.btn_meet, open(context, ACTION_MEETING, 8));
+            views.setOnClickPendingIntent(R.id.btn_remind, open(context, ACTION_REMIND, 10));
 
             Intent svc = new Intent(context, TaskWidgetService.class);
             svc.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);

@@ -250,6 +250,34 @@ button.tt{background:none;border:0;padding:0;text-align:right;color:inherit;font
 .ups li{display:flex;gap:10px;align-items:baseline;padding:9px 0;border-top:1px solid var(--line)}
 .ups .ud{flex:none;font-size:.72rem;color:var(--accent);font-weight:700}
 .ups .ut{flex:1;min-width:0}
+
+/* quick actions under the hero */
+.qa{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.qa-b{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:14px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);font-weight:700;font-size:.82rem;color:var(--ink)}
+.qa-b svg{width:22px;height:22px;color:var(--accent)}
+/* reminder */
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.qchip{border:1px solid var(--line);background:var(--surface-2);border-radius:99px;padding:6px 12px;font-weight:600;font-size:.85rem}
+.okbox{text-align:center;padding:22px 16px}
+.okbig{font-size:2.6rem}
+.okt{font-weight:800;font-size:1.15rem;margin-top:6px}
+.oks{color:var(--ink-2);margin-top:4px}
+/* schedule */
+.weeknav{display:flex;align-items:center;gap:10px;margin-top:14px}
+.weeknav .wl{flex:1;text-align:center;display:flex;flex-direction:column}
+.weeknav .wl span{font-size:.8rem;color:var(--hero-dim)}
+.weeknav .back{min-width:44px;font-size:1.1rem}
+section.blk.day h2{gap:8px}
+.dd{font-size:.75rem;color:var(--ink-2);font-weight:600}
+.dcount{margin-inline-start:auto;font-size:.78rem;color:var(--ink-2);font-weight:600}
+section.blk.day.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}
+.srow.sched select.pill{min-width:150px}
+.note-in{width:100%;margin:-4px 0 6px;padding:7px 10px;font-size:.85rem}
+.crew{font-weight:600;color:var(--accent)}
+.tabbar .tab{font-size:.7rem}
+
+/* wider layout on a computer screen */
+@media (min-width:900px){.wrap{max-width:860px}.tabbar .in{max-width:640px}}
 </style>
 </head>
 <body>
@@ -318,10 +346,23 @@ function normSettings(s){const o=Object.assign({},DEFAULT_SETTINGS,s||{});o.reci
 let projects={}; let settings=normSettings(); let mode="loading"; let col=null; let settingsRef=null;
 const LS="project-tracker-v1", LS_SET="project-tracker-settings";
 function lsLoad(k){try{return JSON.parse(localStorage.getItem(k)||"null")}catch(e){return null}}
-function lsSave(){try{localStorage.setItem(LS,JSON.stringify(projects));localStorage.setItem(LS_SET,JSON.stringify(settings))}catch(e){}
-  if(window.Android){try{window.Android.saveData(JSON.stringify({steps:STEPS,projects:projects,settings:settings}))}catch(e){}}}
+let deleted={}; const LS_DEL="project-tracker-deleted"; let syncQuiet=false;
+function stamp(id,patch){
+  const now=Date.now(); const prev=projects[id]; patch._u=now;
+  if(!patch.tasks)return;
+  if(!prev){patch.tasks=patch.tasks.map(t=>Object.assign({},t,{_u:t._u||now}));return}
+  const pm={};prev.tasks.forEach(t=>pm[t.id]=t);
+  const key=t=>JSON.stringify(Object.assign({},t,{_u:0}));
+  patch.tasks=patch.tasks.map(t=>{const o=pm[t.id];return(!o||key(o)!==key(t))?Object.assign({},t,{_u:now}):t});
+  const keep=new Set(patch.tasks.map(t=>t.id)); const dt=Object.assign({},prev._dt||{});
+  prev.tasks.forEach(t=>{if(!keep.has(t.id))dt[t.id]=now}); patch._dt=dt;
+}
+function lsSave(){try{localStorage.setItem(LS_DEL,JSON.stringify(deleted));localStorage.setItem(LS,JSON.stringify(projects));localStorage.setItem(LS_SET,JSON.stringify(settings));if(typeof team!=="undefined")localStorage.setItem("project-tracker-team",JSON.stringify(team))}catch(e){}
+  if(window.Android){try{window.Android.saveData(JSON.stringify({steps:STEPS,projects:projects,settings:settings}))}catch(e){}}
+  if(!syncQuiet&&typeof scheduleSync==="function")scheduleSync();}
 
 async function save(id,patch){
+  patch=Object.assign({},patch); stamp(id,patch);
   projects[id]=norm(Object.assign({},projects[id]||{},patch));
   if(mode==="db"){
     try{await col.doc(id).set(JSON.parse(JSON.stringify(projects[id])))}
@@ -329,12 +370,12 @@ async function save(id,patch){
   }else lsSave();
 }
 async function remove(id){
-  delete projects[id];
+  delete projects[id]; deleted[id]=Date.now();
   if(mode==="db"){try{await col.doc(id).delete()}catch(e){toast("המחיקה נכשלה")}}
   else lsSave();
 }
 async function saveSettings(patch){
-  settings=normSettings(Object.assign({},settings,patch));
+  settings=normSettings(Object.assign({},settings,patch,{_u:Date.now()}));
   if(mode==="db"){try{await settingsRef.set(JSON.parse(JSON.stringify(settings)))}catch(e){toast("השמירה נכשלה, נסה שוב")}}
   else lsSave();
 }
@@ -379,13 +420,17 @@ function render(force){
   if(id&&projects[id])renderDetail(id);
   else if(h==="#settings")renderSettings();
   else if(h==="#tasks")renderTasks();
-  else if(h==="#newtask")renderNewTask();
+  else if(h==="#schedule")renderSchedule();
+  else if(h==="#reminder"||h==="#reminder-voice")renderReminder(h==="#reminder-voice");
+  else if(h==="#newtask"||h==="#newtask-voice")renderNewTask(h==="#newtask-voice");
   else if(h.startsWith("#t-"))renderEditTask();
   else if(h==="#meeting"||h==="#meeting-voice")renderMeeting(h==="#meeting-voice");
   else renderList(h==="#done");
 }
 
 const ICON={
+  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 14h3M8 17h6"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><path d="M12 10v3l2 2M5 4L2 7M19 4l3 3"/></svg>',
   tasks:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l1.5 1.5L8 5"/><path d="M4 12l1.5 1.5L8 11"/><path d="M4 18l1.5 1.5L8 17"/><path d="M11 6h9M11 12h9M11 18h9"/></svg>',
   list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>',
   done:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9"/></svg>',
@@ -395,7 +440,7 @@ function openTaskCount(){return Object.values(projects).reduce((n,p)=>n+p.tasks.
 function tabbar(cur){
   const n=openTaskCount();
   const t=(k,hash,label,icon,badge)=>'<button class="tab" data-tab="'+hash+'"'+(cur===k?' aria-current="page"':'')+'><span class="ti">'+icon+(badge?'<span class="badge num">'+badge+'</span>':'')+'</span>'+label+'</button>';
-  return '<nav class="tabbar"><div class="in">'+t("list","","פעילים",ICON.list)+t("tasks","tasks","משימות",ICON.tasks,n)+t("done","done","גמורים",ICON.done)+t("settings","settings","הגדרות",ICON.gear)+'</div></nav>';
+  return '<nav class="tabbar"><div class="in">'+t("list","","פעילים",ICON.list)+t("tasks","tasks","משימות",ICON.tasks,n)+t("schedule","schedule","לוז",ICON.cal)+t("done","done","גמורים",ICON.done)+t("settings","settings","הגדרות",ICON.gear)+'</div></nav>';
 }
 function taskFab(){return '<button class="fab fab-task" id="newTaskFab">+ משימה חדשה</button>'}
 function stagesHTML(active,counts,attr){
@@ -446,8 +491,9 @@ function renderList(done){
   }
   const head=done
     ?'<header class="hero"><h1>פרויקטים גמורים</h1><div class="sub"><span class="num">'+counts[4]+'</span> פרויקטים שנמסרו</div></header>'
-    :'<header class="hero"><div class="brand"><span class="logo"></span><h1>מעקב פרויקטים</h1><button class="micbtn" id="openMeeting" aria-label="פגישה חדשה">'+MIC+'<span>פגישה</span></button></div><div class="sub"><span class="num">'+(all.length-counts[4])+'</span> פרויקטים פעילים · לחיצה על שלב מסננת</div>'+stagesHTML(filter,counts,"data-filter")+'</header>';
-  app.innerHTML=head+alertHTML+
+    :'<header class="hero"><div class="brand"><span class="logo"></span><h1>מעקב פרויקטים</h1></div><div class="sub"><span class="num">'+(all.length-counts[4])+'</span> פרויקטים פעילים · לחיצה על שלב מסננת</div>'+stagesHTML(filter,counts,"data-filter")+'</header>';
+  const quick=done?'':'<div class="qa"><button class="qa-b" id="qaTask">'+MIC+'<span>משימה בקול</span></button><button class="qa-b" id="openMeeting">'+ICON.cal+'<span>פגישה</span></button><button class="qa-b" id="qaRem">'+ICON.bell+'<span>תזכורת</span></button></div>';
+  app.innerHTML=head+quick+alertHTML+
     '<div class="tools"><input class="search" id="q" type="search" placeholder="חיפוש פרויקט" value="'+esc(q)+'" aria-label="חיפוש פרויקט"><button class="ghost" id="exp">ייצוא לאקסל</button></div>'+
     '<div class="list">'+genCard+(cards||'<div class="empty">'+(mode==="loading"?"טוען פרויקטים…":done&&!counts[4]?"עדיין אין פרויקטים שנמסרו.":all.length?"אין פרויקטים שמתאימים לחיפוש.":"עדיין אין פרויקטים. הוסף את הראשון בכפתור למטה.")+'</div>')+'</div>'+
     (done?'':'<button class="fab" id="add">+ פרויקט חדש</button>'+taskFab())+tabbar(done?"done":"list");
@@ -488,6 +534,7 @@ function renderDetail(id){
      '<div class="set"><div class="rl">'+l+'</div><div class="pair">'+sel(ORDER_OPTS,p.items[k].order,'data-item="'+k+'" data-f="order" aria-label="'+l+' הזמנה"')+sel(ITEM_OPTS,p.items[k].status,'data-item="'+k+'" data-f="status" aria-label="'+l+' סטטוס"')+'</div></div>').join("")+'</section>'+
    '<section class="blk"><h2>בדיקות</h2>'+CHECKS.map(([k,l])=>
      '<div class="row"><span class="rl">'+l+'</span>'+sel(CHECK_OPTS,p[k],'data-check="'+k+'" aria-label="'+l+'"',CHECK_LABEL)+'</div>').join("")+'</section>'+
+   (()=>{const c=crewFor(id);return c.length?'<section class="blk"><h2>צוות השבוע</h2>'+c.map(([dn,names])=>'<div class="srow"><span class="rl">יום '+dn+'</span><span class="crew">'+names.map(esc).join(", ")+'</span></div>').join("")+'</section>':''})()+
    tasksHTML(p,id)+
    '<section class="blk"><h2>שלבי עבודה</h2><ol class="steps">'+STEPS.map((s,i)=>{
      const st=p.steps[i]; const bd=bizDays(st.plan); const isLate=!st.na&&st.plan&&!st.done&&bd>=LATE;
@@ -549,24 +596,51 @@ function renderTasks(){
       :'<div class="empty">'+(mode==="loading"?"טוען…":"אין משימות פתוחות. כל הכבוד!")+'</div>')+
     taskFab()+tabbar("tasks");
 }
-function renderNewTask(){
+let ntDraft=null, ntHeard="";
+function parseTask(text,list){
+  let t=" "+String(text||"").replace(/[“”"׳']/g,"").replace(/\s+/g," ").trim()+" "; let project="";
+  let best=null; list.forEach(([id,name])=>{const n=String(name).trim();if(!n)return;const i=t.indexOf(n);if(i>=0&&(!best||n.length>best.n.length))best={id,n,i}});
+  if(best){project=best.id;let st=best.i;
+    const before=t.slice(0,st);const m=/\s(בפרויקט|לפרויקט|של פרויקט|פרויקט|עבור|של|ב|ל)\s?-?$/.exec(before);
+    if(m)st=m.index; else if(t[st-1]==="ב"||t[st-1]==="ל")st--;
+    t=t.slice(0,st)+" "+t.slice(best.i+best.n.length)}
+  t=t.replace(/^\s*(תוסיף|הוסף|תרשום|רשום|תכניס|תפתח|פתח|צור|תיצור)( לי)?( את)?( משימה חדשה| משימה)?\s*/,"")
+     .replace(/^\s*(משימה חדשה|משימה)\s*:?\s*/,"").replace(/\s+(ב|ל|של|עבור|-)\s*$/,"").replace(/\s+/g," ").trim();
+  return{text:t,project};
+}
+function taskVoice(txt){
+  if(!txt){toast("לא נקלט דיבור, נסה שוב");return}
+  const cur=document.getElementById("ntProj");
+  const r=parseTask(txt,sorted().map(([id,p])=>[id,p.name]));
+  ntHeard=txt; ntDraft={text:r.text||txt,pid:r.project||(cur?cur.value:"")};
+  if(location.hash!=="#newtask")history.replaceState(null,"","#newtask");
+  renderNewTask();
+}
+window.openNewTask=function(voice){ntDraft=null;ntHeard="";location.hash=voice?"newtask-voice":"newtask";render(true)};
+function renderNewTask(auto){
   app.dataset.view="newtask";
   let last="";try{last=localStorage.getItem("tracker-last-project")||""}catch(e){}
+  if(ntDraft&&ntDraft.pid)last=ntDraft.pid;
   const all=projList(); const act=all.filter(([,p])=>p.status!==DONE), fin=all.filter(([,p])=>p.status===DONE);
   if(!projects[last])last=projects[GENERAL]?GENERAL:(act.length?act[0][0]:(all[0]||[""])[0]);
   const opt=([id,p])=>'<option value="'+esc(id)+'"'+(id===last?' selected':'')+'>'+esc(p.name)+'</option>';
   app.innerHTML='<header class="hero"><div class="dbar"><button class="back" id="back">› חזרה</button></div><h1 style="margin-top:12px">משימה חדשה</h1><div class="sub">המשימה תופיע בתזכורת היומית עד שתסומן כבוצעה</div></header>'+
-    '<section class="blk"><h2>מה צריך לעשות?</h2><textarea id="ntText" placeholder="למשל: לתאם בודק חשמל" aria-label="תיאור המשימה" style="min-height:110px"></textarea>'+
+    (window.Android?'<section class="blk mic-blk"><button class="micbig" id="ntVoice" aria-label="הקלטת משימה">'+MIC+'</button><div class="mic-l">לחיצה ודיבור, למשל: ״להזמין כבלים לזבוטינסקי 89״</div>'+(ntHeard?'<div class="heard">שמעתי: ״'+esc(ntHeard)+'״</div>':'')+'</section>':'')+
+    '<section class="blk"><h2>מה צריך לעשות?</h2><textarea id="ntText" placeholder="למשל: לתאם בודק חשמל" aria-label="תיאור המשימה" style="min-height:110px">'+esc(ntDraft?ntDraft.text:"")+'</textarea>'+
     '<h2>לאיזה פרויקט?</h2><select class="pill wide" id="ntProj" aria-label="פרויקט">'+(projects[GENERAL]?opt([GENERAL,projects[GENERAL]]):'')+act.map(opt).join("")+(fin.length?'<optgroup label="פרויקטים גמורים">'+fin.map(opt).join("")+'</optgroup>':'')+'</select>'+
     '<button class="primary big" id="ntSave">שמירת משימה</button></section>';
-  setTimeout(()=>{const t=document.getElementById("ntText");if(t)t.focus()},80);
+  if(auto&&window.Android){history.replaceState(null,"","#newtask");setTimeout(()=>listen("task"),300)}
+  else if(!ntDraft)setTimeout(()=>{const t=document.getElementById("ntText");if(t)t.focus()},80);
 }
+function addEmp(){const inp=document.getElementById("newEmp");const v=(inp.value||"").trim();if(!v){inp.focus();return}
+  team.employees=team.employees.concat([{id:"e"+Date.now().toString(36),name:v}]);saveTeam();showStaff=true;renderSchedule();setTimeout(()=>{const n=document.getElementById("newEmp");if(n)n.focus()},50)}
 function saveNewTask(){
   const txt=(document.getElementById("ntText").value||"").trim(); const pid=document.getElementById("ntProj").value;
   if(!txt){toast("כתוב מה צריך לעשות");document.getElementById("ntText").focus();return}
   if(!pid||!projects[pid]){toast("בחר פרויקט");return}
   const tasks=projects[pid].tasks.concat([{id:"t"+Date.now().toString(36),text:txt,opened:today(),done:""}]);
   save(pid,{tasks}); try{localStorage.setItem("tracker-last-project",pid)}catch(e){}
+  ntDraft=null; ntHeard="";
   toast("המשימה נוספה ל"+projects[pid].name); location.hash="tasks";
 }
 
@@ -654,7 +728,7 @@ function renderMeeting(auto,noRead){
   }
   const all=sorted();
   const durs=[[15,"רבע שעה"],[30,"חצי שעה"],[45,"45 דקות"],[60,"שעה"],[90,"שעה וחצי"],[120,"שעתיים"],[180,"3 שעות"]];
-  const rems=[[0,"בלי תזכורת"],[10,"10 דקות לפני"],[15,"15 דקות לפני"],[30,"חצי שעה לפני"],[60,"שעה לפני"],[1440,"יום לפני"]];
+  const rems=[[-1,"בלי תזכורת"],[0,"בזמן הפגישה"],[10,"10 דקות לפני"],[15,"15 דקות לפני"],[30,"חצי שעה לפני"],[60,"שעה לפני"],[1440,"יום לפני"]];
   app.innerHTML='<header class="hero"><div class="dbar"><button class="back" id="back">› חזרה</button></div><h1 style="margin-top:12px">פגישה חדשה</h1><div class="sub">לחץ על המיקרופון ואמור למשל: ״פגישה עם אלון ביום שלישי בעשר בזבוטינסקי 89״</div></header>'+
     '<section class="blk mic-blk">'+(isApp?'<button class="micbig" id="mtVoice" aria-label="הקלטה קולית">'+MIC+'</button><div class="mic-l">לחיצה ודיבור</div>':'<div class="info">ההקלטה הקולית והקביעה ביומן Outlook פועלות באפליקציה המותקנת בטלפון. כאן אפשר לראות את המסך.</div>')+
       (heard?'<div class="heard">שמעתי: ״'+esc(heard)+'״</div>':'')+'</section>'+
@@ -671,8 +745,20 @@ function renderMeeting(auto,noRead){
     '</section>';
   if(auto&&isApp){history.replaceState(null,"","#meeting");setTimeout(startVoice,350)}
 }
-function startVoice(){if(!window.Android||!window.Android.startVoice)return;readMt();try{window.Android.startVoice()}catch(e){toast("ההקלטה לא זמינה")}}
+let voiceTarget="meeting";
+const VOICE_PROMPT={meeting:"אמור את פרטי הפגישה",task:"אמור את המשימה ואת שם הפרויקט",reminder:"על מה ומתי להזכיר לך?"};
+function listen(target){
+  if(!window.Android||!(window.Android.startVoiceWith||window.Android.startVoice)){toast("ההקלטה הקולית זמינה באפליקציה המותקנת");return}
+  voiceTarget=target;
+  try{if(window.Android.startVoiceWith)window.Android.startVoiceWith(VOICE_PROMPT[target]);else window.Android.startVoice()}catch(e){toast("ההקלטה לא זמינה")}
+}
+function startVoice(){readMt();listen("meeting")}
 window.onVoiceResult=function(txt){
+  if(voiceTarget==="task")return taskVoice(txt);
+  if(voiceTarget==="reminder")return reminderVoice(txt);
+  return meetingVoice(txt);
+};
+function meetingVoice(txt){
   if(!txt){toast("לא נקלט דיבור, נסה שוב");return}
   if(app.dataset.view==="meeting")readMt();
   heard=txt; if(!mt)mt=mtDefaults();
@@ -682,7 +768,7 @@ window.onVoiceResult=function(txt){
   if(r.location)mt.location=r.location;
   if(location.hash!=="#meeting"){history.replaceState(null,"","#meeting")}
   renderMeeting(false,true);
-};
+}
 window.onCalendarPermission=function(ok){if(!ok)toast("בלי גישה ליומן אפשר רק לפתוח ב-Outlook");if(location.hash==="#meeting")renderMeeting(false)};
 window.openMeeting=function(voice){mt=null;heard="";location.hash=voice?"meeting-voice":"meeting";render(true)};
 function meetingPayload(){
@@ -713,14 +799,241 @@ function openMeetingInOutlook(){
   addMeetingTask(p);
 }
 
+// ---------- reminders (phone clock) ----------
+let rm=null, rmHeard="", rmDone=null;
+const MIN_WORDS={"דקה":1,"שתי דקות":2,"חמש":5,"עשר":10,"רבע שעה":15,"חמש עשרה":15,"עשרים":20,"עשרים וחמש":25,"חצי שעה":30,"שלושים":30,"ארבעים":40,"ארבעים וחמש":45,"חמישים":50,"שעה":60,"שעה וחצי":90,"שעתיים":120,"שלוש שעות":180,"ארבע שעות":240};
+function parseReminder(text){
+  let t=" "+String(text||"").replace(/[“”"׳']/g,"").replace(/\s+/g," ").trim()+" ";
+  t=t.replace(/ (תזכיר לי|תזכירי לי|להזכיר לי|הזכר לי|תעשה לי תזכורת|תשים לי תזכורת|שים לי תזכורת|תקבע לי תזכורת|תזכורת|תזכיר) /," ");
+  let when=null, m;
+  const now=new Date();
+  const rel=/ (בעוד|עוד) (\d+) (דקות|דקה|שעות|שעה) /;
+  if((m=rel.exec(t))){const n=+m[2];when=new Date(now.getTime()+(m[3].startsWith("ש")?n*60:n)*60000);t=t.slice(0,m.index)+" "+t.slice(m.index+m[0].length)}
+  else{const words=Object.keys(MIN_WORDS).sort((a,b)=>b.length-a.length).join("|");
+    const re=new RegExp(" (בעוד|עוד) ("+words+")( דקות)? ");
+    if((m=re.exec(t))){when=new Date(now.getTime()+MIN_WORDS[m[2]]*60000);t=t.slice(0,m.index)+" "+t.slice(m.index+m[0].length)}}
+  let msg;
+  if(!when){const r=parseMeeting(t,[]);
+    if(r.time){let d=r.date||today();let dt=new Date(d+"T"+r.time+":00");if(!r.date&&dt<now)dt=new Date(dt.getTime()+864e5);when=dt}
+    msg=r.title==="פגישה"?"":r.title}
+  else msg=t;
+  msg=String(msg||"").replace(/^\s*(ש|ל|על|את)\s+/,"").replace(/^\s*ש(?=[א-ת])/,"").replace(/\s+/g," ").trim();
+  return{text:msg,when:when?when.getTime():null};
+}
+function fmtWhen(ms){const d=new Date(ms),n=new Date();const hm=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  const same=(a,b)=>a.toDateString()===b.toDateString(); const tm=new Date(n.getTime()+864e5);
+  return (same(d,n)?"היום":same(d,tm)?"מחר":fmtDate(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")))+" ב-"+hm}
+function rmDefaults(){const d=new Date(Date.now()+30*60000);return{text:"",when:d.getTime()}}
+function readRm(){if(!rm)return;const g=id=>document.getElementById(id);
+  if(g("rmText"))rm.text=g("rmText").value;
+  if(g("rmDate")&&g("rmTime")&&g("rmDate").value&&g("rmTime").value){const t=new Date(g("rmDate").value+"T"+g("rmTime").value+":00").getTime();if(!isNaN(t))rm.when=t}}
+function renderReminder(auto){
+  if(app.dataset.view==="reminder")readRm();
+  app.dataset.view="reminder"; if(!rm)rm=rmDefaults();
+  const isApp=!!(window.Android&&window.Android.setAlarm);
+  const d=new Date(rm.when); const ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); const ts=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  app.innerHTML='<header class="hero"><div class="dbar"><button class="back" id="back">› חזרה</button></div><h1 style="margin-top:12px">תזכורת בשעון</h1><div class="sub">אמור למשל: ״תזכיר לי עוד חצי שעה לחזור לדוד״</div></header>'+
+    (rmDone?'<section class="blk okbox"><div class="okbig">⏰</div><div class="okt">נקבעה התראה '+esc(fmtWhen(rmDone.when))+'</div><div class="oks">'+esc(rmDone.text||"תזכורת")+'</div><div class="inline" style="justify-content:center;margin-top:10px"><button class="ghost" id="rmAgain" style="padding:10px 14px">תזכורת נוספת</button><button class="primary" id="back2" style="padding:10px 14px">סיום</button></div></section>':
+    '<section class="blk mic-blk">'+(isApp?'<button class="micbig" id="rmVoice" aria-label="הקלטת תזכורת">'+MIC+'</button><div class="mic-l">לחיצה ודיבור</div>':'<div class="info">ההקלטה הקולית וההתראה בשעון פועלות באפליקציה המותקנת בטלפון.</div>')+
+      (rmHeard?'<div class="heard">שמעתי: ״'+esc(rmHeard)+'״</div>':'')+'</section>'+
+    '<section class="blk"><h2>על מה להזכיר?</h2><input class="field fullw" id="rmText" placeholder="למשל: לחזור לדוד" value="'+esc(rm.text)+'" aria-label="נוסח התזכורת">'+
+      '<h2>מתי?</h2><div class="pair"><input class="field" type="date" id="rmDate" value="'+ds+'" aria-label="תאריך"><input class="field" type="time" id="rmTime" value="'+ts+'" aria-label="שעה"></div>'+
+      '<div class="quick">'+[[15,"+15 דק׳"],[30,"+30 דק׳"],[60,"+שעה"],[120,"+שעתיים"],["m8","מחר 08:00"]].map(([v,l])=>'<button class="qchip" data-rmq="'+v+'">'+l+'</button>').join("")+'</div>'+
+      (isApp?'<button class="primary big" id="rmSet">קביעת התראה בשעון</button>':'')+'<p class="note">תזכורת ליותר מ-24 שעות קדימה תיקבע ביומן, עם התראה בזמן.</p></section>');
+  if(auto&&isApp&&!rmDone){history.replaceState(null,"","#reminder");setTimeout(()=>listen("reminder"),300)}
+}
+function setReminder(fromVoice){
+  if(!fromVoice)readRm(); const text=(rm.text||"").trim()||"תזכורת"; const when=rm.when;
+  if(!when||when<Date.now()-60000){toast("הזמן שנבחר כבר עבר");return false}
+  if(when-Date.now()<=24*3600e3){
+    const d=new Date(when); let ok=false;
+    try{ok=window.Android.setAlarm(JSON.stringify({hour:d.getHours(),minute:d.getMinutes(),message:text}))}catch(e){}
+    if(!ok){toast("לא נמצאה אפליקציית שעון שמקבלת התראות");return false}
+  }else{
+    const cals=calendars(); if(!Array.isArray(cals)||!cals.length){toast("לתזכורת רחוקה צריך גישה ליומן. אשר במסך הפגישה");return false}
+    if(!mt)mt=mtDefaults(); pickDefaultCal(cals);
+    let r={ok:false};try{r=JSON.parse(window.Android.addEvent(JSON.stringify({calendarId:mt.calendar,title:"⏰ "+text,location:"",notes:"תזכורת מאפליקציית מעקב פרויקטים",start:when,end:when+15*60000,reminder:0})))}catch(e){}
+    if(!r.ok){toast(r.error||"הקביעה ביומן נכשלה");return false}
+  }
+  rmDone={text,when}; renderReminder(false); return true;
+}
+function reminderVoice(txt){
+  if(!txt){toast("לא נקלט דיבור, נסה שוב");return}
+  if(!rm)rm=rmDefaults(); rmDone=null; rmHeard=txt;
+  const r=parseReminder(txt); rm.text=r.text||rm.text;
+  if(location.hash!=="#reminder")history.replaceState(null,"","#reminder");
+  if(r.when){rm.when=r.when;app.dataset.view="";if(setReminder(true))return}
+  else toast("לא הבנתי מתי. בחר זמן ולחץ קביעה");
+  app.dataset.view=""; renderReminder(false);
+}
+window.openReminder=function(voice){rm=null;rmHeard="";rmDone=null;location.hash=voice?"reminder-voice":"reminder";render(true)};
+
+// ---------- weekly crew schedule ----------
+let team={employees:[],weeks:{}}; let teamRef=null; const LS_TEAM="project-tracker-team"; let weekOffset=1; let showStaff=false;
+const DAY_NAMES=["ראשון","שני","שלישי","רביעי","חמישי","שישי"];
+const OTHER_PLACES=[["office","משרד"],["off","חופש"],["sick","מחלה"],["army","מילואים"],["other","אחר"]];
+function normTeam(t){t=t||{};return{_u:t._u||0,employees:Array.isArray(t.employees)?t.employees.filter(e=>e&&e.name):[],weeks:t.weeks&&typeof t.weeks==="object"?t.weeks:{}}}
+async function saveTeam(){
+  team._u=Date.now();
+  if(mode==="db"&&teamRef){try{await teamRef.set(JSON.parse(JSON.stringify(team)))}catch(e){toast("השמירה נכשלה")}}
+  else lsSave();
+}
+function weekStart(off){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay()+7*off);return d}
+function dkey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function placeName(v){if(!v)return"";if(projects[v])return projects[v].name;const o=OTHER_PLACES.find(([k])=>k===v);return o?o[1]:""}
+function renderSchedule(){
+  app.dataset.view="schedule";
+  const ws=weekStart(weekOffset), wk=dkey(ws), week=team.weeks[wk]||{};
+  const end=new Date(ws);end.setDate(end.getDate()+5);
+  const label=weekOffset===0?"השבוע":weekOffset===1?"שבוע הבא":weekOffset===-1?"שבוע שעבר":(weekOffset>0?"בעוד "+weekOffset+" שבועות":"לפני "+(-weekOffset)+" שבועות");
+  const act=projList().filter(([,p])=>p.status!==DONE);
+  const opts=v=>'<option value="">—</option><optgroup label="פרויקטים">'+act.map(([id,p])=>'<option value="'+esc(id)+'"'+(id===v?' selected':'')+'>'+esc(p.name)+'</option>').join("")+'</optgroup><optgroup label="אחר">'+OTHER_PLACES.map(([k,l])=>'<option value="'+k+'"'+(k===v?' selected':'')+'>'+l+'</option>').join("")+'</optgroup>';
+  const emps=team.employees;
+  app.innerHTML='<header class="hero"><h1>לוז עבודה</h1><div class="sub">שיבוץ העובדים לפרויקטים לפי ימים</div>'+
+    '<div class="weeknav"><button class="back" data-week="-1" aria-label="שבוע קודם">›</button><div class="wl"><b>'+label+'</b><span class="num">'+fmtDate(dkey(ws))+' – '+fmtDate(dkey(end))+'</span></div><button class="back" data-week="1" aria-label="שבוע הבא">‹</button></div></header>'+
+    '<section class="blk"><h2><button class="h2link" id="toggleStaff">עובדים ('+emps.length+')<span>'+(showStaff||!emps.length?'סגירה':'עריכה')+'</span></button></h2>'+
+      (showStaff||!emps.length?'<div class="inline"><input class="field" id="newEmp" placeholder="שם העובד" aria-label="שם עובד חדש"><button class="primary" id="addEmp">הוספה</button></div>'+
+        (emps.length?'<div class="chips">'+emps.map(e=>'<span class="mchip" style="direction:rtl">'+esc(e.name)+'<button data-rmemp="'+esc(e.id)+'" aria-label="הסרת '+esc(e.name)+'">✕</button></span>').join("")+'</div>':'<p class="note">הוסף את העובדים כדי להתחיל לשבץ.</p>'):'')+
+    '</section>'+
+    (emps.length?DAY_NAMES.map((dn,di)=>{const d=new Date(ws);d.setDate(d.getDate()+di);const day=week[di]||{};const isToday=dkey(d)===today();
+      const filled=emps.filter(e=>day[e.id]&&day[e.id].p).length;
+      return '<section class="blk day'+(isToday?' today':'')+'"><h2>יום '+dn+' <span class="dd num">'+fmtDate(dkey(d))+'</span>'+(isToday?'<span class="tag ok" style="margin-inline-start:auto">היום</span>':'<span class="dcount">'+filled+'/'+emps.length+'</span>')+'</h2>'+
+        emps.map(e=>{const a=day[e.id]||{};return '<div class="srow sched"><span class="rl">'+esc(e.name)+'</span><select class="pill '+(a.p?(projects[a.p]?'site':'na'):'')+'" data-sd="'+di+'" data-se="'+esc(e.id)+'" aria-label="שיבוץ '+esc(e.name)+' ביום '+dn+'">'+opts(a.p||"")+'</select></div>'+
+          (a.p?'<input class="field note-in" data-sn="'+di+'" data-se="'+esc(e.id)+'" placeholder="הערה (לא חובה)" value="'+esc(a.n||"")+'" aria-label="הערה">':'')}).join("")+'</section>'}).join("")+
+      '<section class="blk"><div class="inline"><button class="ghost" id="copyWeek" style="padding:10px 14px;flex:1">העתקה מהשבוע הקודם</button><button class="primary" id="shareWeek" style="padding:10px 14px;flex:1">שיתוף הלוז</button></div></section>':'')+
+    tabbar("schedule");
+}
+function weekText(){
+  const ws=weekStart(weekOffset), week=team.weeks[dkey(ws)]||{};
+  const lines=["לוז עבודה – שבוע "+fmtDate(dkey(ws))];
+  DAY_NAMES.forEach((dn,di)=>{const d=new Date(ws);d.setDate(d.getDate()+di);const day=week[di]||{};
+    const rows=team.employees.filter(e=>day[e.id]&&day[e.id].p).map(e=>"• "+e.name+" – "+placeName(day[e.id].p)+(day[e.id].n?" ("+day[e.id].n+")":""));
+    if(rows.length)lines.push("","יום "+dn+" "+fmtDate(dkey(d))+":",...rows)});
+  return lines.join("\n");
+}
+async function shareWeek(){
+  const txt=weekText();
+  if(window.Android&&window.Android.shareText){window.Android.shareText(txt);return}
+  try{await navigator.clipboard.writeText(txt);toast("הלוז הועתק, אפשר להדביק בוואטסאפ")}catch(e){toast("ההעתקה לא זמינה כאן")}
+}
+function crewFor(pid){
+  const ws=weekStart(0), week=team.weeks[dkey(ws)]||{}; const out=[];
+  DAY_NAMES.forEach((dn,di)=>{const day=week[di]||{};const names=team.employees.filter(e=>day[e.id]&&day[e.id].p===pid).map(e=>e.name);if(names.length)out.push([dn,names])});
+  return out;
+}
+
+// ---------- sync between phone and computer ----------
+const LS_SYNC="project-tracker-sync";
+function syncConf(){return lsLoad(LS_SYNC)||{}}
+function syncCfg(){const c=syncConf();return mode==="local"&&c.repo&&c.token?c:null}
+function setSyncConf(p){const c=Object.assign(syncConf(),p);try{localStorage.setItem(LS_SYNC,JSON.stringify(c))}catch(e){}return c}
+function downloadText(name,text,mime){
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:mime+";charset=utf-8"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast("הקובץ נשמר")}
+  catch(e){toast("השמירה לא זמינה כאן")}
+}
+function b64enc(str){const b=new TextEncoder().encode(str);let s="";for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)}
+function b64dec(b64){const bin=atob(b64.replace(/\s/g,""));const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new TextDecoder().decode(u)}
+function stable(v){if(Array.isArray(v))return"["+v.map(stable).join(",")+"]";if(v&&typeof v==="object")return"{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+stable(v[k])).join(",")+"}";return JSON.stringify(v)}
+function mergeProject(a,b){
+  const base=(a._u||0)>(b._u||0)?a:b;
+  const dt=Object.assign({},b._dt||{}); Object.entries(a._dt||{}).forEach(([k,v])=>{if(!dt[k]||v>dt[k])dt[k]=v});
+  const tm={}; const order=[];
+  [base,base===a?b:a].forEach(p=>(p.tasks||[]).forEach(t=>{const o=tm[t.id];if(!o){tm[t.id]=t;order.push(t.id)}else if((t._u||0)>(o._u||0))tm[t.id]=t}));
+  const tasks=order.map(id=>tm[id]).filter(t=>!(dt[t.id]&&dt[t.id]>=(t._u||0)));
+  return Object.assign({},base,{tasks,_dt:dt,_u:Math.max(a._u||0,b._u||0)});
+}
+function mergeData(L,R){
+  if(!R)return L;
+  const del=Object.assign({},R.deleted||{}); Object.entries(L.deleted||{}).forEach(([k,v])=>{if(!del[k]||v>del[k])del[k]=v});
+  const out={};
+  new Set([...Object.keys(L.projects||{}),...Object.keys(R.projects||{})]).forEach(id=>{
+    const a=(L.projects||{})[id], b=(R.projects||{})[id]; const m=!a?b:!b?a:mergeProject(a,b);
+    if(del[id]&&del[id]>=(m._u||0))return; out[id]=m});
+  const pick=(l,r)=>!r?l:!l?r:((l._u||0)>(r._u||0)?l:r);
+  return{projects:out,deleted:del,team:pick(L.team,R.team),settings:pick(L.settings,R.settings)};
+}
+let syncTimer=null, syncing=false, syncAgain=false, syncErrShown=false;
+function scheduleSync(){if(!syncCfg())return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncNow(false),3500)}
+async function gh(c,method,body){
+  const r=await fetch("https://api.github.com/repos/"+c.repo+"/contents/data/tracker-data.json",{method,cache:"no-store",
+    headers:{"Authorization":"Bearer "+c.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"},body:body?JSON.stringify(body):undefined});
+  return r;
+}
+async function syncNow(loud){
+  const c=syncCfg(); if(!c)return false;
+  if(syncing){syncAgain=true;return false} syncing=true;
+  try{
+    for(let attempt=0;attempt<3;attempt++){
+      let r=await gh(c,"GET"); let remote=null, sha=null;
+      if(r.status===404){remote=null}
+      else if(r.ok){const j=await r.json();sha=j.sha;
+        let txt=j.content?b64dec(j.content):"";
+        if(!txt&&j.size>0){const rr=await fetch("https://api.github.com/repos/"+c.repo+"/contents/data/tracker-data.json",{cache:"no-store",headers:{"Authorization":"Bearer "+c.token,"Accept":"application/vnd.github.raw+json"}});txt=await rr.text()}
+        remote=txt?JSON.parse(txt):null}
+      else if(r.status===401||r.status===403){throw new Error("auth")}
+      else throw new Error("http "+r.status);
+      const local={projects,deleted,team,settings};
+      const m=mergeData(local,remote);
+      // apply to this device
+      syncQuiet=true;
+      projects={};Object.keys(m.projects).forEach(k=>projects[k]=norm(m.projects[k]));
+      if(!projects[GENERAL])projects[GENERAL]=norm(generalBlank());
+      deleted=m.deleted; team=normTeam(m.team); settings=normSettings(m.settings);
+      lsSave(); syncQuiet=false;
+      const out={app:"project-tracker",projects:m.projects,deleted:m.deleted,team:m.team,settings:m.settings};
+      if(remote&&stable({p:remote.projects,d:remote.deleted||{},t:remote.team,s:remote.settings})===stable({p:out.projects,d:out.deleted,t:out.team,s:out.settings})){done();return true}
+      out.updatedAt=new Date().toISOString(); out.device=window.Android?"phone":"computer";
+      const body={message:"sync from "+out.device,content:b64enc(JSON.stringify(out))}; if(sha)body.sha=sha;
+      const w=await gh(c,"PUT",body);
+      if(w.ok){done();return true}
+      if(w.status===409||w.status===422)continue;
+      if(w.status===401||w.status===403||w.status===404)throw new Error("auth");
+      throw new Error("http "+w.status);
+    }
+    throw new Error("conflict");
+  }catch(e){
+    syncQuiet=false;
+    setSyncConf({lastError:e.message==="auth"?"אין הרשאה: בדוק את שם המאגר ואת הטוקן":"אין חיבור לשרת, ננסה שוב"});
+    if(loud||!syncErrShown){toast(e.message==="auth"?"הסנכרון נכשל: אין הרשאה למאגר":"הסנכרון נכשל, ננסה שוב בהמשך");syncErrShown=true}
+    if(location.hash==="#settings")renderSettings();
+    return false;
+  }finally{
+    syncing=false; if(syncAgain){syncAgain=false;scheduleSync()}
+  }
+  function done(){setSyncConf({last:Date.now(),lastError:""});syncErrShown=false;
+    const ae=document.activeElement; if(!(ae&&app.contains(ae)&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA")))render(true);
+    if(loud)toast("סונכרן ✓")}
+}
+function syncSection(){
+  if(mode!=="local")return '<section class="blk"><h2>סנכרון בין מכשירים</h2><div class="info">הסנכרון פועל באפליקציה בטלפון ובתוכנה למחשב. בתצוגה הזו הוא לא זמין.</div></section>';
+  const c=syncConf(); const on=!!(c.repo&&c.token);
+  const last=c.last?new Date(c.last):null;
+  const status=!on?'לא מוגדר':c.lastError?'<span style="color:var(--bad)">'+esc(c.lastError)+'</span>':last?'סונכרן לאחרונה '+String(last.getHours()).padStart(2,"0")+":"+String(last.getMinutes()).padStart(2,"0")+(last.toDateString()===new Date().toDateString()?'':' ב-'+last.getDate()+"/"+(last.getMonth()+1)):'מחובר, ממתין לסנכרון ראשון';
+  return '<section class="blk"><h2>סנכרון בין מכשירים</h2>'+
+    '<div class="srow"><span class="rl">מצב<small>'+status+'</small></span>'+(on?'<button class="primary" id="syncNow" style="padding:10px 14px">סנכרון עכשיו</button>':'')+'</div>'+
+    '<div class="srow" style="display:block"><span class="rl">מאגר הנתונים ב-GitHub<small>בפורמט שם-משתמש/שם-מאגר, למשל leikin780-beep/tracker-data</small></span>'+
+      '<div class="inline"><input class="field" id="syRepo" dir="ltr" placeholder="user/tracker-data" value="'+esc(c.repo||"")+'" aria-label="מאגר"></div>'+
+      '<div class="inline"><input class="field" id="syToken" type="password" dir="ltr" placeholder="'+(c.token?'טוקן שמור ✓ (להחלפה הדבק חדש)':'github_pat_…')+'" aria-label="טוקן"></div>'+
+      '<div class="inline"><button class="primary" id="sySave" style="padding:10px 14px;flex:1">שמירה וחיבור</button>'+(on?'<button class="ghost" id="syOff" style="padding:10px 14px">ניתוק</button>':'')+'</div></div>'+
+    '<p class="note">הגדרה זהה בטלפון ובמחשב. מומלץ להגדיר קודם בטלפון, ואז במחשב.</p></section>';
+}
+async function saveSync(){
+  const repo=(document.getElementById("syRepo").value||"").trim().replace(/^https?:\/\/github\.com\//,"").replace(/\.git$/,"").replace(/\/$/,"");
+  const tok=(document.getElementById("syToken").value||"").trim();
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){toast("שם המאגר צריך להיות בפורמט user/repo");return}
+  const c=syncConf(); if(!tok&&!c.token){toast("חסר טוקן");return}
+  setSyncConf({repo,token:tok||c.token,lastError:""});
+  toast("מתחבר…"); const ok=await syncNow(true); renderSettings(); if(ok)toast("החיבור הצליח והנתונים סונכרנו ✓");
+}
+
 // ---------- backup / restore ----------
 let pendingRestore=null;
 async function makeBackup(){
-  const data=JSON.stringify({app:"project-tracker",version:3,created:new Date().toISOString(),projects:projects,settings:settings},null,1);
+  const data=JSON.stringify({app:"project-tracker",version:3,created:new Date().toISOString(),projects:projects,settings:settings,team:team},null,1);
   const name="גיבוי מעקב פרויקטים "+today()+".json";
   if(window.Android&&window.Android.shareFile){window.Android.shareFile(data,name,"application/json");return}
   let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use("downloads"):null}catch(e){}
-  if(!dl){toast("גיבוי לא זמין בתצוגה הזו");return}
+  if(!dl){downloadText(name,data,"application/json");return}
   try{await dl.save({filename:name,data:data,mimeType:"application/json"});toast("הגיבוי נשמר")}catch(e){if(e&&e.code!=="declined")toast("הגיבוי נכשל")}
 }
 function readRestore(file){
@@ -741,6 +1054,9 @@ async function doRestore(){
       await settingsRef.set(JSON.parse(JSON.stringify(newSettings)));
     }catch(e){toast("השחזור נכשל");return}
   }
+  if(d.team){team=normTeam(d.team);if(mode==="db"&&teamRef){try{await teamRef.set(JSON.parse(JSON.stringify(team)))}catch(e){}}}
+  if(mode!=="db"){const now=Date.now();Object.keys(projects).forEach(k=>{if(!next[k])deleted[k]=now});
+    Object.values(next).forEach(p=>{p._u=now;p.tasks=p.tasks.map(t=>Object.assign({},t,{_u:now}))});newSettings._u=now;team._u=now}
   projects=next;settings=newSettings;if(mode!=="db")lsSave();
   toast("הנתונים שוחזרו");location.hash="";render(true);
 }
@@ -764,6 +1080,7 @@ function renderSettings(){
      '<div class="srow" style="display:block"><button class="ghost" id="preview" style="padding:10px 14px">'+(showPreview?'הסתרת התצוגה המקדימה':'תצוגה מקדימה של המייל')+'</button>'+
        (showPreview?'<pre class="preview">'+esc(buildSummary())+'</pre>':'')+'</div>'+
    '</section>'+
+   syncSection()+
    '<section class="blk" id="restoreBox"><h2>גיבוי ושחזור</h2>'+
      '<div class="srow"><span class="rl">גיבוי כל הנתונים<small>קובץ אחד עם כל הפרויקטים, המשימות וההגדרות</small></span><button class="ghost" id="backup" style="padding:10px 14px">יצירת גיבוי</button></div>'+
      '<div class="srow"><span class="rl">שחזור מגיבוי<small>טעינת קובץ גיבוי במקום הנתונים הנוכחיים</small></span><label class="ghost filebtn" style="padding:10px 14px">בחירת קובץ<input type="file" id="restoreFile" accept=".json,application/json"></label></div>'+
@@ -806,12 +1123,29 @@ app.addEventListener("click",e=>{
   if(t.id==="etDel"){const c=editCtx();if(!c)return;if(!armedDelete){armedDelete=true;t.classList.add("armed");t.textContent="לחץ שוב לאישור המחיקה";return}
     save(c.e.pid,{tasks:c.p.tasks.filter(q=>q.id!==c.x.id)});toast("המשימה נמחקה");location.hash=editReturn||"tasks";return}
   if(t.id==="openMeeting"){window.openMeeting(false);return}
+  if(t.id==="qaTask"){window.openNewTask(!!window.Android);return}
+  if(t.id==="qaRem"){window.openReminder(!!window.Android);return}
+  if(t.id==="ntVoice"){const tx=document.getElementById("ntText"),pj=document.getElementById("ntProj");ntDraft={text:tx?tx.value:"",pid:pj?pj.value:""};listen("task");return}
+  if(t.id==="rmVoice"){readRm();listen("reminder");return}
+  if(t.id==="rmSet"){setReminder(false);return}
+  if(t.id==="rmAgain"){rm=null;rmHeard="";rmDone=null;renderReminder(false);return}
+  if(t.id==="back2"){rmDone=null;rm=null;rmHeard="";location.hash=lastNav;return}
+  if(t.dataset.rmq){readRm();const v=t.dataset.rmq;if(v==="m8"){const d=new Date(Date.now()+864e5);d.setHours(8,0,0,0);rm.when=d.getTime()}else rm.when=Date.now()+(+v)*60000;app.dataset.view="";renderReminder(false);return}
+  if(t.dataset.week){weekOffset+=+t.dataset.week;renderSchedule();return}
+  if(t.id==="toggleStaff"){showStaff=!showStaff;renderSchedule();return}
+  if(t.id==="addEmp"){addEmp();return}
+  if(t.dataset.rmemp){team.employees=team.employees.filter(e=>e.id!==t.dataset.rmemp);saveTeam();renderSchedule();return}
+  if(t.id==="copyWeek"){const prev=team.weeks[dkey(weekStart(weekOffset-1))];if(!prev){toast("אין לוז בשבוע הקודם");return}team.weeks[dkey(weekStart(weekOffset))]=JSON.parse(JSON.stringify(prev));saveTeam();renderSchedule();toast("הלוז הועתק");return}
+  if(t.id==="shareWeek"){shareWeek();return}
   if(t.id==="mtVoice"){startVoice();return}
   if(t.id==="mtSave"){saveMeeting();return}
   if(t.id==="mtOpen"){openMeetingInOutlook();return}
   if(t.id==="mtPerm"){readMt();try{window.Android.requestCalendarPermission()}catch(e){}return}
   if(t.id==="ntSave"){saveNewTask();return}
   if(t.id==="backup"){makeBackup();return}
+  if(t.id==="sySave"){saveSync();return}
+  if(t.id==="syncNow"){syncNow(true).then(()=>{if(location.hash==="#settings")renderSettings()});return}
+  if(t.id==="syOff"){try{localStorage.removeItem(LS_SYNC)}catch(e){}renderSettings();toast("הסנכרון נותק במכשיר הזה");return}
   if(t.id==="doRestore"){doRestore();return}
   if(t.id==="cancelRestore"){pendingRestore=null;renderSettings();return}
   if(t.dataset.tstep!=null&&id){const i=+t.dataset.tstep;const steps=projects[id].steps.map(s=>Object.assign({},s));const s=steps[i];
@@ -821,7 +1155,7 @@ app.addEventListener("click",e=>{
     save(id,{steps});render(true);return}
   if(t.dataset.status!=null&&id){save(id,{status:STATUSES[+t.dataset.status]});render(true);return}
   if(t.id==="back"&&location.hash.startsWith("#t-")){location.hash=editReturn||"tasks";return}
-  if(t.id==="back"){const target=(location.hash==="#done"||(!id&&!["#newtask","#meeting","#meeting-voice"].includes(location.hash)))?"":lastNav;if(location.hash.slice(1)!==target)location.hash=target;render(true);window.scrollTo(0,0);return}
+  if(t.id==="back"){const target=(location.hash==="#done"||(!id&&!["#newtask","#newtask-voice","#meeting","#meeting-voice","#reminder","#reminder-voice"].includes(location.hash)))?"":lastNav;if(location.hash.slice(1)!==target)location.hash=target;render(true);window.scrollTo(0,0);return}
   if(t.id==="add"){
     const nid="p"+Date.now().toString(36);
     const maxO=Math.max(-1,...Object.values(projects).map(p=>p.order||0));
@@ -840,6 +1174,10 @@ app.addEventListener("change",e=>{
   const t=e.target;
   if(t.id==="restoreFile"){if(t.files&&t.files[0])readRestore(t.files[0]);t.value="";return}
   if(t.id==="ntProj"||t.id==="etProj"||t.id==="etDone")return;
+  if(t.dataset.sd!=null){const wk=dkey(weekStart(weekOffset));const w=team.weeks[wk]=team.weeks[wk]||{};const d=w[t.dataset.sd]=w[t.dataset.sd]||{};
+    if(t.value)d[t.dataset.se]=Object.assign({},d[t.dataset.se]||{},{p:t.value});else delete d[t.dataset.se];saveTeam();renderSchedule();return}
+  if(t.dataset.sn!=null){const wk=dkey(weekStart(weekOffset));const d=((team.weeks[wk]||{})[t.dataset.sn]||{})[t.dataset.se];if(d){d.n=t.value;saveTeam()}return}
+  if(t.id==="rmText"||t.id==="rmDate"||t.id==="rmTime"){readRm();return}
   if(t.id&&t.id.startsWith("mt")){readMt();if(t.id==="mtProj"&&mt.project&&projects[mt.project]&&!mt.location)renderMeeting(false);return}
   if(t.id==="emailEnabled"){if(t.checked&&!settings.recipients.length)toast("כדאי להוסיף נמען אחד לפחות");saveSettings({emailEnabled:t.checked});return}
   if(t.id==="emailHour"||t.id==="pushHour"){saveSettings({[t.id]:+t.value});toast("נשמר");return}
@@ -863,6 +1201,7 @@ app.addEventListener("keydown",e=>{
   if(e.target.id==="newtask"){const id=currentId();if(id)addTask(id)}
   if(e.target.id==="newmail")addMail();
   if(e.target.id==="etUpd")addUpdate();
+  if(e.target.id==="newEmp")addEmp();
   if(e.target.id==="fromMail")e.target.blur();
 });
 window.addEventListener("hashchange",()=>{render(true);window.scrollTo(0,0)});
@@ -874,7 +1213,7 @@ async function exportCsv(){
   const name="מעקב פרויקטים "+today()+".csv";
   if(window.Android){window.Android.shareCsv(csv,name);return}
   let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use("downloads"):null}catch(e){}
-  if(!dl){toast("ייצוא לא זמין בתצוגה הזו");return}
+  if(!dl){downloadText(name,csv,"text/csv");return}
   try{await dl.save({filename:name,data:csv});toast("הקובץ נשמר")}
   catch(e){if(e&&e.code!=="declined")toast("הייצוא נכשל")}
 }
@@ -882,16 +1221,16 @@ async function exportCsv(){
 function applyPending(){
   let list=[];try{list=JSON.parse(window.Android.takePending()||"[]")}catch(e){}
   if(!list.length)return false;
-  list.forEach(c=>{const p=projects[c.pid];if(!p)return;p.tasks=p.tasks.map(t=>t.id===c.tid?Object.assign({},t,{done:c.done||today()}):t)});
+  const now=Date.now();
+  list.forEach(c=>{const p=projects[c.pid];if(!p)return;p._u=now;p.tasks=p.tasks.map(t=>t.id===c.tid?Object.assign({},t,{done:c.done||today(),_u:now}):t)});
   lsSave(); return true;
 }
-window.syncFromNative=function(){if(mode==="local"&&window.Android&&window.Android.takePending&&applyPending())render(true)};
+window.syncFromNative=function(){if(mode==="local"&&window.Android&&window.Android.takePending&&applyPending())render(true);if(mode==="local")syncNow(false)};
 const SEED={"p01": {"inspector": "V", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "מותקן", "mount": "מותקן", "remote": "מותקן", "sikim": "מותקן"}, "name": "מכבי", "notes": "", "order": 0, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p02": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "יגור", "notes": "", "order": 1, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p03": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "קלישר", "notes": "", "order": 2, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p04": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "מנדלשטם", "notes": "", "order": 3, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p05": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "לווין", "notes": "", "order": 4, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "אין הזמנה", "status": "לא הוזמן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p06": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "מותקן", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "זלטופובסקי", "notes": "", "order": 5, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p07": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "מותקן", "mount": "מותקן", "remote": "מותקן", "sikim": "מותקן"}, "name": "רמברנדט", "notes": "", "order": 6, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p08": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "מותקן", "sikim": "מותקן"}, "name": "יהודה הלוי", "notes": "", "order": 7, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p09": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "מותקן", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "N/A", "sikim": "מותקן"}, "name": "פיקוס", "notes": "", "order": 8, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p10": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "", "grounding": "מותקן", "lock": "N/A", "mount": "מותקן", "remote": "במשרד", "sikim": "מותקן"}, "name": "וויצמן", "notes": "", "order": 9, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "מותקן"}}, "status": "נמסר", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p11": {"inspector": "", "items": {"cable": {"order": "", "status": "מותקן"}, "doorSensor": {"order": "", "status": ""}, "grounding": {"order": "", "status": ""}, "lock": {"order": "", "status": ""}, "mount": {"order": "", "status": "מותקן"}, "remote": {"order": "", "status": "N/A"}, "sikim": {"order": "", "status": "מותקן"}}, "name": "לסל", "notes": "", "order": 10, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בבדיקות", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}], "tasks": [{"id": "t_phone1", "text": "למצוא פתרון ליחידות האלחוט", "opened": "2026-11-02", "done": ""}]}, "p12": {"inspector": "", "items": {"cable": {"order": "", "status": "מותקן"}, "doorSensor": {"order": "", "status": ""}, "grounding": {"order": "", "status": ""}, "lock": {"order": "", "status": ""}, "mount": {"order": "", "status": "מותקן"}, "remote": {"order": "", "status": ""}, "sikim": {"order": "", "status": "מותקן"}}, "name": "זבוטינסקי 89", "notes": "", "order": 11, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "באתר"}}, "status": "בבדיקות", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}], "tasks": [{"id": "t_phone2", "text": "לסדר שער כניסה לדבר עם אלון שערים", "opened": "2026-11-02", "done": ""}]}, "p13": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "", "grounding": "", "lock": "", "mount": "מותקן", "remote": "", "sikim": "מותקן"}, "name": "סהרון", "notes": "", "order": 12, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "באתר"}}, "status": "בבדיקות", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p14": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "", "grounding": "", "lock": "", "mount": "מותקן", "remote": "", "sikim": "מותקן"}, "name": "סמדר", "notes": "", "order": 13, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p15": {"inspector": "", "items": {"cable": "באתר", "doorSensor": "", "grounding": "", "lock": "", "mount": "באתר", "remote": "", "sikim": "באתר"}, "name": "בית-לחם", "notes": "", "order": 14, "plans": "V", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p16": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "", "grounding": "", "lock": "", "mount": "מותקן", "remote": "", "sikim": "מותקן"}, "name": "בן ציון 13", "notes": "", "order": 15, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p17": {"inspector": "", "items": {"cable": "במשרד", "doorSensor": "", "grounding": "", "lock": "", "mount": "במשרד", "remote": "", "sikim": "במשרד"}, "name": "בן יהודה 186", "notes": "", "order": 16, "plans": "בתיקון", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p18": {"inspector": "", "items": {"cable": "מותקן", "doorSensor": "", "grounding": "", "lock": "", "mount": "מותקן", "remote": "", "sikim": "מותקן"}, "name": "בודנהיימר 37", "notes": "", "order": 17, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "באתר"}}, "status": "בבדיקות", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p19": {"inspector": "", "items": {"cable": {"order": "", "status": "באתר"}, "doorSensor": {"order": "", "status": ""}, "grounding": {"order": "", "status": ""}, "lock": {"order": "", "status": "N/A"}, "mount": {"order": "", "status": "באתר"}, "remote": {"order": "", "status": ""}, "sikim": {"order": "", "status": "באתר"}}, "name": "נחמני 35", "notes": "", "order": 18, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "2026-10-29", "plan": "2026-10-29"}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}], "tasks": []}, "p20": {"inspector": "", "items": {"cable": "במשרד", "doorSensor": "", "grounding": "", "lock": "", "mount": "במשרד", "remote": "", "sikim": "במשרד"}, "name": "רות 6 ר\"ג", "notes": "", "order": 19, "plans": "", "sets": {"cam": {"order": "הזמנה נפתחה", "status": "לא הגיע"}, "comm": {"order": "אין הזמנה", "status": "לא הוזמן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p21": {"inspector": "", "items": {"cable": "לא נפרק", "doorSensor": "", "grounding": "", "lock": "", "mount": "לא נפרק", "remote": "", "sikim": "לא נפרק"}, "name": "פועלי הרכבת 25", "notes": "", "order": 20, "plans": "", "sets": {"cam": {"order": "הזמנה נפתחה", "status": "לא הגיע"}, "comm": {"order": "אין הזמנה", "status": "לא הוזמן"}, "cp": {"order": "אין הזמנה", "status": "לא הוזמן"}}, "status": "לא התחיל", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p22": {"inspector": "", "items": {"cable": "במשרד", "doorSensor": "", "grounding": "", "lock": "", "mount": "במשרד", "remote": "", "sikim": "במשרד"}, "name": "פראג 4", "notes": "", "order": 21, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "באתר"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p23": {"inspector": "", "items": {"cable": "במשרד", "doorSensor": "", "grounding": "", "lock": "", "mount": "במשרד", "remote": "", "sikim": "במשרד"}, "name": "פרנקפורט 3", "notes": "", "order": 22, "plans": "", "sets": {"cam": {"order": "הזמנה התקבלה", "status": "מותקן ללא ח\"כ"}, "comm": {"order": "הזמנה התקבלה", "status": "מותקן"}, "cp": {"order": "הזמנה התקבלה", "status": "במשרד"}}, "status": "בהרכבה", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p24": {"inspector": "", "items": {"cable": "לא נפרק", "doorSensor": "", "grounding": "", "lock": "", "mount": "לא נפרק", "remote": "", "sikim": "לא נפרק"}, "name": "יצחק הלוי 7 חולון", "notes": "", "order": 23, "plans": "", "sets": {"cam": {"order": "אין הזמנה", "status": "לא הוזמן"}, "comm": {"order": "אין הזמנה", "status": "לא הוזמן"}, "cp": {"order": "אין הזמנה", "status": "לא הוזמן"}}, "status": "לא התחיל", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}, "p25": {"inspector": "", "items": {"cable": "לא נפרק", "doorSensor": "", "grounding": "", "lock": "", "mount": "לא נפרק", "remote": "", "sikim": "לא נפרק"}, "name": "אדם הכהן 14 ת\"א", "notes": "", "order": 24, "plans": "", "sets": {"cam": {"order": "אין הזמנה", "status": "לא הוזמן"}, "comm": {"order": "אין הזמנה", "status": "לא הוזמן"}, "cp": {"order": "אין הזמנה", "status": "לא הוזמן"}}, "status": "לא התחיל", "steps": [{"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}, {"done": "", "plan": ""}]}};
 // ---------- boot ----------
-(function(){const sp=document.getElementById("splash");if(!sp)return;if(/^#(newtask|meeting|t-)/.test(location.hash)){sp.remove();return}
+(function(){const sp=document.getElementById("splash");if(!sp)return;if(/^#(newtask|meeting|reminder|t-)/.test(location.hash)){sp.remove();return}
   const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
   setTimeout(()=>{sp.classList.add("out");setTimeout(()=>sp.remove(),450)},reduce?800:4000)})();
-window.openNewTask=function(){location.hash="newtask";render(true)};
 render(true);
 (async()=>{
   let db=null;
@@ -900,15 +1239,18 @@ render(true);
     mode="db"; col=db.collection("projects"); settingsRef=db.doc("settings/main");
     col.onSnapshot(snap=>{const next={};snap.docs.forEach(d=>{const v=d.data();if(v)next[d.id]=norm(v)});projects=next;ensureGeneral();render(false)},()=>toast("החיבור לנתונים נקטע, רענן את הדף"));
     settingsRef.onSnapshot(s=>{settings=normSettings(s.exists?s.data():null);if(location.hash==="#settings")render(false)},()=>{});
+    teamRef=db.doc("team/main"); teamRef.onSnapshot(s=>{team=normTeam(s.exists?s.data():null);if(location.hash==="#schedule")render(false)},()=>{});
   }else{
     mode="local";
     let raw=lsLoad(LS)||{};
     if(!Object.keys(raw).length&&typeof SEED!=="undefined"&&!localStorage.getItem(LS+"-seeded")){raw=SEED;try{localStorage.setItem(LS+"-seeded","1")}catch(e){}}
     projects={};Object.keys(raw).forEach(k=>projects[k]=norm(raw[k]));
     if(!projects[GENERAL])projects[GENERAL]=norm(generalBlank());
-    settings=normSettings(lsLoad(LS_SET));
+    settings=normSettings(lsLoad(LS_SET)); team=normTeam(lsLoad(LS_TEAM)); deleted=lsLoad(LS_DEL)||{};
     if(window.Android&&window.Android.takePending)applyPending();
-    lsSave();render(true);
+    syncQuiet=true;lsSave();syncQuiet=false;render(true);
+    if(syncCfg())setTimeout(()=>syncNow(false),600);
+    setInterval(()=>{if(syncCfg()&&!document.hidden)syncNow(false)},120000);
   }
 })();
 })();
