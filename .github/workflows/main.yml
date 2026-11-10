@@ -40,7 +40,6 @@ jobs:
             n=$(basename "$f"); rest=${n#res__}; dir=${rest%%__*}; file=${rest#*__}
             mkdir -p "$M/res/$dir"; cp "$f" "$M/res/$dir/$file"
           done
-          find "$B" -type f | sed "s|$B/||" | sort
       - name: Build
         run: |
           cd "$RUNNER_TEMP/b"
@@ -53,4 +52,40 @@ jobs:
           gh release create "build-${{ github.run_id }}" "$RUNNER_TEMP/ProjectTracker.apk" \
             --repo "${{ github.repository }}" \
             --title "מעקב פרויקטים – $(date +%d/%m/%Y\ %H:%M)" \
-            --notes "להורדה: לחיצה על ProjectTracker.apk"
+            --notes "טלפון: ProjectTracker.apk · מחשב: ProjectTracker-Desktop.exe"
+
+  desktop:
+    needs: build
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Arrange desktop files
+        run: |
+          set -e
+          mkdir -p desk
+          one() {
+            p=$(find . -path ./.git -prune -o -path ./desk -prune -o -type f -name "$1" -print | head -1)
+            if [ -z "$p" ]; then echo "::error::Missing file: $1"; exit 1; fi
+            cp "$p" "$2"
+          }
+          one desktop-main.js      desk/main.js
+          one desktop-package.json desk/package.json
+          one desktop-app.html     desk/index.html
+          one desktop-icon.png     desk/icon.png
+      - name: Build Windows program
+        working-directory: desk
+        run: |
+          npm install --no-audit --no-fund
+          npx electron-builder --win portable --publish never
+      - name: Add to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "build-${{ github.run_id }}" desk/dist/ProjectTracker-Desktop.exe \
+            --repo "${{ github.repository }}" --clobber
